@@ -1,9 +1,9 @@
 # yourdfpy
 
-Add a short description here!
+Yet anOther URDF parser for Python. Yup, it's another one. Deal with it.
 
 
-## Description
+## But why?!?
 
 A longer description of your project goes here...
 
