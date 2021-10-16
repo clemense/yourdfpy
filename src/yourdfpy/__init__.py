@@ -139,28 +139,106 @@ class URDF:
 
         return tra.compose_matrix(translate=np.array(list(map(float, xyz.split()))), angles=np.array(list(map(float, rpy.split()))))
     
+    def _parse_color(self, xml_element):
+        if xml_element is None:
+            return None
+
+        rgba = xml_element.get('rgba', default='1 1 1 1')
+
+        return np.array(list(map(float, rgba.split())))
+
+    def _parse_texture(self, xml_element):
+        if xml_element is None:
+            return None
+
+        return xml_element.get('filename', default=None)
+    
+    def _parse_material(self, xml_element):
+        if xml_element is None:
+            return None
+        
+        material = Material()
+        material.color = self._parse_color(xml_element.find('color'))
+        material.texture = self._parse_texture(xml_element.find('texture'))
+
+        return material
+
     def _parse_visual(self, xml_element):
         visual = Visual(name=xml_element.get('name'))
 
         visual.geometry = self._parse_geometry(xml_element.find('geometry'))
         visual.origin = self._parse_origin(xml_element.find('origin'))
+        visual.material = self._parse_material(xml_element.find('material'))
 
         return visual
 
+    def _parse_collision(self, xml_element):
+        collision = Collision(name=xml_element.get('name'))
+
+        collision.geometry = self._parse_geometry(xml_element.find('geometry'))
+        collision.origin = self._parse_origin(xml_element.find('origin'))
+
+        return collision
+    
+    def _parse_inertia(self, xml_element):
+        if xml_element is None:
+            return None
+        
+        x = xml_element
+
+        return np.array([
+            [x.get('ixx', default=1.0), x.get('ixy', default=0.0), x.get('ixz', default=0.0)],
+            [x.get('ixy', default=0.0), x.get('iyy', default=1.0), x.get('iyz', default=0.0)],
+            [x.get('ixz', default=0.0), x.get('iyz', default=0.0), x.get('izz', default=1.0)],
+        ])
+    
+    def _parse_mass(self, xml_element):
+        if xml_element is None:
+            return None
+        
+        return xml_element.get('value', default=1.0)
+    
+    def _parse_inertial(self, xml_element):
+        inertial = Inertial()
+
+        if xml_element is not None:
+            inertial.origin = self._parse_origin(xml_element.find('origin'))
+            inertial.inertia = self._parse_inertia(xml_element.find('inertia'))
+            inertial.mass = self._parse_mass(xml_element.find('mass'))
+
+        return inertial
+    
     def _parse_link(self, xml_element):
         link = Link(name=xml_element.attrib['name'])
+
+        link.inertial = self._parse_inertial(xml_element.find('inertial'))
 
         for v in xml_element.findall('visual'):
             link.visuals.append(self._parse_visual(v))
 
+        for c in xml_element.findall('collision'):
+            link.collisions.append(self._parse_collision(v))
+
         return link
+
+    def _parse_joint(self, xml_element):
+        joint = Joint(name=xml_element.attrib['name'])
+        
+        joint.type = xml_element.get('type', default=None)
+        joint.parent = xml_element.get('parent', default=None)
+        joint.child = xml_element.get('child', default=None)
+        joint.origin = self._parse_origin(xml_element.find('origin'))
+
+        return joint
 
     def _parse_robot(self, xml_element):
         robot = Robot(name=xml_element.attrib['name'])
 
         for l in xml_element.findall('link'):
             robot.links.append(self._parse_link(l))
-
+        for j in xml_element.findall('joint'):
+            robot.joints.append(self._parse_joint(j))
+        
         return robot
     
     def from_xml_file(fname):
