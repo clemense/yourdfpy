@@ -15,11 +15,13 @@ except PackageNotFoundError:  # pragma: no cover
 finally:
     del version, PackageNotFoundError
 
-
+import os
+import random
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Optional, List
 
+import trimesh
 import trimesh.transformations as tra
 
 import xml.etree.ElementTree as ET
@@ -64,14 +66,14 @@ class Visual:
 @dataclass
 class Collision:
     name: str
-    origin: np.ndarray
-    geometry: Geometry
+    origin: np.ndarray = None
+    geometry: Geometry = None
 
 @dataclass
 class Inertial:
-    origin: np.ndarray
-    mass: float
-    inertia: np.ndarray
+    origin: np.ndarray = None
+    mass: float = None
+    inertia: np.ndarray = None
 
 @dataclass
 class Link:
@@ -83,10 +85,11 @@ class Link:
 @dataclass
 class Joint:
     name: str
-    type: str
-    parent: str
-    child: str
-    origin: np.ndarray
+    type: str = None
+    parent: str = None
+    child: str = None
+    origin: np.ndarray = None
+    axis: np.ndarray = None
 
 @dataclass
 class Robot:
@@ -97,9 +100,10 @@ class Robot:
     gazebo: List[str] = field(default_factory=list)
 
 class URDF:
-    def __init__(self, xml_tree):
+    def __init__(self, xml_tree, mesh_dir=None):
         root = xml_tree.getroot()
         
+        self.mesh_dir = mesh_dir
         self.robot = self._parse_robot(root)
         
 
@@ -221,13 +225,21 @@ class URDF:
 
         return link
 
+    def _parse_axis(self, xml_element):
+        if xml_element is None:
+            return np.array([1.0, 0, 0])
+        
+        xyz = xml_element.get('xyz', '1 0 0')
+        return np.array(list(map(float, xyz.split())))
+    
     def _parse_joint(self, xml_element):
         joint = Joint(name=xml_element.attrib['name'])
         
         joint.type = xml_element.get('type', default=None)
-        joint.parent = xml_element.get('parent', default=None)
-        joint.child = xml_element.get('child', default=None)
+        joint.parent = xml_element.find('parent').get('link')
+        joint.child = xml_element.find('child').get('link')
         joint.origin = self._parse_origin(xml_element.find('origin'))
+        joint.axis = self._parse_axis(xml_element.find('axis'))
 
         return joint
 
@@ -244,6 +256,59 @@ class URDF:
     def from_xml_file(fname):
         tree = ET.parse(fname)
 
-        return URDF(tree)
+        return URDF(tree, mesh_dir=os.path.dirname(fname))
+
+    def _determine_base_link(self):
+        link_names = [l.name for l in self.robot.links]
+
+        for j in self.robot.joints:
+            link_names.remove(j.child)
+        
+        if len(link_names) == 0:
+            # raise Error?
+            return None
+        
+        return random.choice(link_names)
+
+    def _forward_kinematics_joint(self, joint, q=0.0):
+        if joint.type == 'revolute':
+            matrix = joint.origin @ tra.rotation_matrix(q, joint.axis)
+        elif joint.type == 'prismatic':
+            matrix = joint.origin @ tra.translation_matrix(q*joint.axis)
+        else:
+            matrix = joint.origin
+
+        return matrix
+
+
+    def get_scene(self):
+        s = trimesh.scene.Scene(base_frame=self._determine_base_link())
+
+        for j in self.robot.joints:
+            matrix = self._forward_kinematics_joint(j)
             
+            s.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
+
+        for l in self.robot.links:
+            s.graph.nodes.add(l.name)
+            for v in l.visuals:
+                # this will delete visuals
+                import uuid
+                new_world_name = str(uuid.uuid1())
+                new_s = trimesh.load(os.path.join(self.mesh_dir, v.geometry.mesh.filename), force='scene')
+                new_s.graph.update(frame_from=new_world_name, frame_to=new_s.graph.base_frame)
+                new_s.graph.base_frame = new_world_name
+                
+                s.graph.update(frame_to=new_world_name, frame_from=s.graph.base_frame)
+                s = trimesh.scene.scene.append_scenes([s, new_s], common=[new_world_name])
+                # s.add_geometry(
+                #     geometry=mesh,
+                #     node_name=v.name,
+                #     parent_node_name=l.name,
+                #     transform=v.origin if v.origin is not None else np.eye(4),
+                # ))
+                # s.graph.update(frame_from=l.name, frame_to=mesh.graph.base_frame, matrix=np.eye(4))
+
+        
+        return s
 
