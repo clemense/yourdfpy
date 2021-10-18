@@ -280,27 +280,41 @@ class URDF:
 
         return matrix
 
+    def update_trimesh_scene(self, trimesh_scene, configuration):
+        for j, q in zip(self.robot.joints, configuration):
+            matrix = self._forward_kinematics_joint(j, q=q)
+            
+            trimesh_scene.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
 
-    def get_scene(self):
+    def get_scene(self, configuration=None):
         s = trimesh.scene.Scene(base_frame=self._determine_base_link())
 
-        for j in self.robot.joints:
-            matrix = self._forward_kinematics_joint(j)
+        configuration = np.zeros(len(self.robot.joints)) if configuration is None else configuration
+        assert(len(configuration) == len(self.robot.joints))
+
+        for j, q in zip(self.robot.joints, configuration):
+            matrix = self._forward_kinematics_joint(j, q=q)
             
             s.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
 
         for l in self.robot.links:
             s.graph.nodes.add(l.name)
             for v in l.visuals:
-                # this will delete visuals
-                import uuid
-                new_world_name = str(uuid.uuid1())
+                origin = v.origin if v.origin is not None else np.eye(4)
+
                 new_s = trimesh.load(os.path.join(self.mesh_dir, v.geometry.mesh.filename), force='scene')
-                new_s.graph.update(frame_from=new_world_name, frame_to=new_s.graph.base_frame)
-                new_s.graph.base_frame = new_world_name
+                # new_s.graph.update(frame_from=new_world_name, frame_to=new_s.graph.base_frame)
+                # new_s.graph.base_frame = new_world_name
                 
-                s.graph.update(frame_to=new_world_name, frame_from=s.graph.base_frame)
-                s = trimesh.scene.scene.append_scenes([s, new_s], common=[new_world_name])
+                
+                for name, geom in new_s.geometry.items():
+                    s.add_geometry(
+                        geometry=geom,
+                        parent_node_name=l.name,
+                        transform=origin @ new_s.graph.get(name)[0],
+                    )
+                # s.graph.update(frame_to=new_world_name, frame_from=s.graph.base_frame)
+                # s = trimesh.scene.scene.append_scenes([s, new_s], common=[new_world_name])
                 # s.add_geometry(
                 #     geometry=mesh,
                 #     node_name=v.name,
