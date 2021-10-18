@@ -24,7 +24,8 @@ from typing import Optional, List
 import trimesh
 import trimesh.transformations as tra
 
-import xml.etree.ElementTree as ET
+# import xml.etree.ElementTree as ET
+from lxml import etree
 
 @dataclass
 class Sphere:
@@ -52,9 +53,17 @@ class Geometry:
     mesh: Optional[Mesh] = None
 
 @dataclass
+class Color:
+    rgba: np.ndarray
+
+@dataclass
+class Texture:
+    filename: str
+
+@dataclass
 class Material:
-    color: np.ndarray
-    texture: str
+    color: Color
+    texture: Texture
 
 @dataclass
 class Visual:
@@ -110,14 +119,51 @@ class URDF:
     def _parse_box(self, xml_element):
         return Box(size=np.array(xml_element.attrib['size'].split()))
     
+    def _write_box(self, xml_parent, box):
+        etree.SubElement(
+            xml_parent,
+            'box',
+            attrib={'size': ' '.join(map(str, box.size))}
+        )
+    
     def _parse_cylinder(self, xml_element):
         return Cylinder(radius=xml_element.attrib['radius'], length=xml_element.attrib['length'])
+    
+    def _write_cylinder(self, xml_parent, cylinder):
+        etree.SubElement(
+            xml_parent,
+            'cylinder',
+            attrib={
+                'radius': str(cylinder.radius),
+                'length': str(cylinder.length)
+            }
+        )
     
     def _parse_sphere(self, xml_element):
         return Sphere(radius=xml_element.attrib['radius'])
     
+    def _write_sphere(self, xml_parent, sphere):
+        etree.SubElement(
+            xml_parent,
+            'sphere',
+            attrib={
+                'radius': str(sphere.radius)
+            }
+        )
+    
     def _parse_mesh(self, xml_element):
         return Mesh(filename=xml_element.get('filename'), scale=xml_element.get('scale'))
+    
+    def _write_mesh(self, xml_parent, mesh):
+        attrib = {'filename': mesh.filename}
+        if mesh.scale is not None:
+            attrib.update({'scale': str(mesh.scale)})
+        
+        etree.SubElement(
+            xml_parent,
+            'mesh',
+            attrib=attrib
+        )
     
     def _parse_geometry(self, xml_element):
         geometry = Geometry()
@@ -134,6 +180,23 @@ class URDF:
         
         return geometry
 
+    def _write_geometry(self, xml_parent, geometry):
+        if geometry is None:
+            return
+        
+        xml_element = etree.SubElement(
+            xml_parent,
+            'geometry'
+        )
+        if geometry.box is not None:
+            self._write_box(xml_element, geometry.box)
+        elif geometry.cylinder is not None:
+            self._write_cylinder(xml_element, geometry.cylinder)
+        elif geometry.sphere is not None:
+            self._write_sphere(xml_element, geometry.sphere)
+        elif geometry.mesh is not None:
+            self._write_mesh(xml_element, geometry.mesh)
+    
     def _parse_origin(self, xml_element):
         if xml_element is None:
             return None
@@ -143,19 +206,56 @@ class URDF:
 
         return tra.compose_matrix(translate=np.array(list(map(float, xyz.split()))), angles=np.array(list(map(float, rpy.split()))))
     
+    def _write_origin(self, xml_parent, origin):
+        if origin is None:
+            return
+
+        etree.SubElement(
+            xml_parent,
+            'origin',
+            attrib={
+                'xyz': ' '.join(map(str, tra.translation_from_matrix(origin))),
+                'rpy': ' '.join(map(str, tra.euler_from_matrix(origin))),
+            }
+        )
+
     def _parse_color(self, xml_element):
         if xml_element is None:
             return None
 
         rgba = xml_element.get('rgba', default='1 1 1 1')
 
-        return np.array(list(map(float, rgba.split())))
+        return Color(rgba=np.array(list(map(float, rgba.split()))))
+
+    def _write_color(self, xml_parent, color):
+        if color is None:
+            return
+        
+        etree.SubElement(
+            xml_parent,
+            'color',
+            attrib={
+                'rgba': ' '.join(map(str, color.rgba))
+            }
+        )
 
     def _parse_texture(self, xml_element):
         if xml_element is None:
             return None
 
-        return xml_element.get('filename', default=None)
+        return Texture(filename=xml_element.get('filename', default=None))
+    
+    def _write_texture(self, xml_parent, texture):
+        if texture is None:
+            return
+        
+        etree.SubElement(
+            xml_parent,
+            'texture',
+            attrib={
+                'filename': texture.filename
+            }
+        )
     
     def _parse_material(self, xml_element):
         if xml_element is None:
@@ -167,6 +267,15 @@ class URDF:
 
         return material
 
+    def _write_material(self, xml_parent, material):
+        if material is None:
+            return
+        
+        xml_element = etree.SubElement(xml_parent, 'material')
+
+        self._write_color(xml_element, material.color)
+        self._write_texture(xml_element, material.texture)
+    
     def _parse_visual(self, xml_element):
         visual = Visual(name=xml_element.get('name'))
 
@@ -176,6 +285,13 @@ class URDF:
 
         return visual
 
+    def _write_visual(self, xml_parent, visual):
+        xml_element = etree.SubElement(xml_parent, 'visual')
+
+        self._write_geometry(xml_element, visual.geometry)
+        self._write_origin(xml_element, visual.origin)
+        self._write_material(xml_element, visual.material)
+
     def _parse_collision(self, xml_element):
         collision = Collision(name=xml_element.get('name'))
 
@@ -184,6 +300,12 @@ class URDF:
 
         return collision
     
+    def _write_collision(self, xml_parent, collision):
+        xml_element = etree.SubElement(xml_parent, 'collision')
+
+        self._write_geometry(xml_element, collision.geometry)
+        self._write_origin(xml_element, collision.origin)
+
     def _parse_inertia(self, xml_element):
         if xml_element is None:
             return None
@@ -196,21 +318,61 @@ class URDF:
             [x.get('ixz', default=0.0), x.get('iyz', default=0.0), x.get('izz', default=1.0)],
         ])
     
+    def _write_inertia(self, xml_parent, inertia):
+        if inertia is None:
+            return None
+
+        etree.SubElement(
+            xml_parent,
+            'inertia',
+            attrib={
+                'ixx': str(inertia[0, 0]),
+                'ixy': str(inertia[0, 1]),
+                'ixz': str(inertia[0, 2]),
+                'iyy': str(inertia[1, 1]),
+                'iyz': str(inertia[1, 2]),
+                'izz': str(inertia[2, 2]),
+            }
+        )
+
     def _parse_mass(self, xml_element):
         if xml_element is None:
             return None
         
         return xml_element.get('value', default=1.0)
     
+    def _write_mass(self, xml_parent, mass):
+        if mass is None:
+            return
+        
+        etree.SubElement(
+            xml_parent,
+            'mass',
+            attrib={
+                'value': str(mass),
+            }
+        )
+    
     def _parse_inertial(self, xml_element):
+        if xml_element is None:
+            return None
+
         inertial = Inertial()
-
-        if xml_element is not None:
-            inertial.origin = self._parse_origin(xml_element.find('origin'))
-            inertial.inertia = self._parse_inertia(xml_element.find('inertia'))
-            inertial.mass = self._parse_mass(xml_element.find('mass'))
-
+        inertial.origin = self._parse_origin(xml_element.find('origin'))
+        inertial.inertia = self._parse_inertia(xml_element.find('inertia'))
+        inertial.mass = self._parse_mass(xml_element.find('mass'))
+        
         return inertial
+    
+    def _write_inertial(self, xml_parent, inertial):
+        if inertial is None:
+            return
+        
+        xml_element = etree.SubElement(xml_parent, 'inertial')
+
+        self._write_origin(xml_element, inertial.origin)
+        self._write_mass(xml_element, inertial.mass)
+        self._write_inertia(xml_element, inertial.inertia)
     
     def _parse_link(self, xml_element):
         link = Link(name=xml_element.attrib['name'])
@@ -225,6 +387,21 @@ class URDF:
 
         return link
 
+    def _write_link(self, xml_parent, link):
+        xml_element = etree.SubElement(
+            xml_parent,
+            'link',
+            attrib={
+                'name': link.name,
+            },
+        )
+
+        self._write_inertial(xml_element, link.inertial)
+        for visual in link.visuals:
+            self._write_visual(xml_element, visual)
+        for collision in link.collisions:
+            self._write_collision(xml_element, collision)
+    
     def _parse_axis(self, xml_element):
         if xml_element is None:
             return np.array([1.0, 0, 0])
@@ -232,6 +409,16 @@ class URDF:
         xyz = xml_element.get('xyz', '1 0 0')
         return np.array(list(map(float, xyz.split())))
     
+    def _write_axis(self, xml_parent, axis):
+        if axis is None:
+            return
+
+        etree.SubElement(
+            xml_parent,
+            'axis',
+            attrib = {'xyz': ' '.join(map(str, axis))}
+        )
+
     def _parse_joint(self, xml_element):
         joint = Joint(name=xml_element.attrib['name'])
         
@@ -243,6 +430,29 @@ class URDF:
 
         return joint
 
+    def _write_joint(self, xml_parent, joint):
+        xml_element = etree.SubElement(
+            xml_parent,
+            'joint',
+            attrib={
+                'name': joint.name,
+                'type': joint.type,
+            }
+        )
+
+        etree.SubElement(
+            xml_element,
+            'parent',
+            attrib={'link': joint.parent}
+        )
+        etree.SubElement(
+            xml_element,
+            'child',
+            attrib={'link': joint.child}
+        )
+        self._write_origin(xml_element, joint.origin)
+        self._write_axis(xml_element, joint.axis)
+
     def _parse_robot(self, xml_element):
         robot = Robot(name=xml_element.attrib['name'])
 
@@ -253,8 +463,23 @@ class URDF:
         
         return robot
     
+    def _write_robot(self, robot):
+        xml_element = etree.Element(
+            'robot',
+            attrib={
+                'name': robot.name
+            }
+        )
+        for link in robot.links:
+            self._write_link(xml_element, link)
+        for joint in robot.joints:
+            self._write_joint(xml_element, joint)
+
+        return xml_element
+
     def from_xml_file(fname):
-        tree = ET.parse(fname)
+        parser = etree.XMLParser(remove_blank_text=True)
+        tree = etree.parse(fname, parser)
 
         return URDF(tree, mesh_dir=os.path.dirname(fname))
 
@@ -326,3 +551,17 @@ class URDF:
         
         return s
 
+    def write_xml(self):
+        xml_element = self._write_robot(self.robot)
+        return etree.ElementTree(xml_element)
+
+    def write_xml_string(self, **kwargs):
+        xml_element = self.write_xml()
+        return etree.tostring(xml_element, xml_declaration=True, *kwargs)
+
+    def write_xml_file(self, fname):
+        xml_element = self.write_xml()
+        xml_element.write(fname, xml_declaration=True, pretty_print=True)
+
+        
+        
