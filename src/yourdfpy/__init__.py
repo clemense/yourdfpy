@@ -127,7 +127,7 @@ class URDF:
         )
     
     def _parse_cylinder(self, xml_element):
-        return Cylinder(radius=xml_element.attrib['radius'], length=xml_element.attrib['length'])
+        return Cylinder(radius=float(xml_element.attrib['radius']), length=float(xml_element.attrib['length']))
     
     def _write_cylinder(self, xml_parent, cylinder):
         etree.SubElement(
@@ -140,7 +140,7 @@ class URDF:
         )
     
     def _parse_sphere(self, xml_element):
-        return Sphere(radius=xml_element.attrib['radius'])
+        return Sphere(radius=float(xml_element.attrib['radius']))
     
     def _write_sphere(self, xml_parent, sphere):
         etree.SubElement(
@@ -383,7 +383,7 @@ class URDF:
             link.visuals.append(self._parse_visual(v))
 
         for c in xml_element.findall('collision'):
-            link.collisions.append(self._parse_collision(v))
+            link.collisions.append(self._parse_collision(c))
 
         return link
 
@@ -496,12 +496,14 @@ class URDF:
         return random.choice(link_names)
 
     def _forward_kinematics_joint(self, joint, q=0.0):
+        origin = np.eye(4) if joint.origin is None else joint.origin
+        
         if joint.type == 'revolute':
-            matrix = joint.origin @ tra.rotation_matrix(q, joint.axis)
+            matrix = origin @ tra.rotation_matrix(q, joint.axis)
         elif joint.type == 'prismatic':
-            matrix = joint.origin @ tra.translation_matrix(q*joint.axis)
+            matrix = origin @ tra.translation_matrix(q*joint.axis)
         else:
-            matrix = joint.origin
+            matrix = origin
 
         return matrix
 
@@ -510,6 +512,27 @@ class URDF:
             matrix = self._forward_kinematics_joint(j, q=q)
             
             trimesh_scene.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
+
+    def _add_visual_to_scene(self, s, v, link_name):
+        origin = v.origin if v.origin is not None else np.eye(4)
+
+        if v.geometry is not None:
+            if v.geometry.box is not None:
+                new_s = trimesh.Scene([trimesh.creation.box(extents=v.geometry.box.size)])
+            elif v.geometry.sphere is not None:
+                new_s = trimesh.Scene([trimesh.creation.uv_sphere(radius=v.geometry.sphere.radius)])
+            elif v.geometry.cylinder is not None:
+                new_s = trimesh.Scene([trimesh.creation.cylinder(radius=v.geometry.cylinder.radius, height=v.geometry.cylinder.length)])
+            elif v.geometry.mesh is not None:
+                print(f'Loading {v.geometry.mesh.filename} from {self.mesh_dir}')
+                new_s = trimesh.load(os.path.join(self.mesh_dir, v.geometry.mesh.filename), force='scene')
+            
+            for name, geom in new_s.geometry.items():
+                s.add_geometry(
+                    geometry=geom,
+                    parent_node_name=link_name,
+                    transform=origin @ new_s.graph.get(name)[0],
+                )
 
     def get_scene(self, configuration=None):
         s = trimesh.scene.Scene(base_frame=self._determine_base_link())
@@ -525,28 +548,7 @@ class URDF:
         for l in self.robot.links:
             s.graph.nodes.add(l.name)
             for v in l.visuals:
-                origin = v.origin if v.origin is not None else np.eye(4)
-
-                new_s = trimesh.load(os.path.join(self.mesh_dir, v.geometry.mesh.filename), force='scene')
-                # new_s.graph.update(frame_from=new_world_name, frame_to=new_s.graph.base_frame)
-                # new_s.graph.base_frame = new_world_name
-                
-                
-                for name, geom in new_s.geometry.items():
-                    s.add_geometry(
-                        geometry=geom,
-                        parent_node_name=l.name,
-                        transform=origin @ new_s.graph.get(name)[0],
-                    )
-                # s.graph.update(frame_to=new_world_name, frame_from=s.graph.base_frame)
-                # s = trimesh.scene.scene.append_scenes([s, new_s], common=[new_world_name])
-                # s.add_geometry(
-                #     geometry=mesh,
-                #     node_name=v.name,
-                #     parent_node_name=l.name,
-                #     transform=v.origin if v.origin is not None else np.eye(4),
-                # ))
-                # s.graph.update(frame_from=l.name, frame_to=mesh.graph.base_frame, matrix=np.eye(4))
+                self._add_visual_to_scene(s, v, link_name=l.name)
 
         
         return s
