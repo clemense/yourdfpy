@@ -62,8 +62,8 @@ class Texture:
 
 @dataclass
 class Material:
-    color: Color
-    texture: Texture
+    color: Optional[Color] = None
+    texture: Optional[Texture] = None
 
 @dataclass
 class Visual:
@@ -75,14 +75,14 @@ class Visual:
 @dataclass
 class Collision:
     name: str
-    origin: np.ndarray = None
+    origin: Optional[np.ndarray] = None
     geometry: Geometry = None
 
 @dataclass
 class Inertial:
-    origin: np.ndarray = None
-    mass: float = None
-    inertia: np.ndarray = None
+    origin: Optional[np.ndarray] = None
+    mass: Optional[float] = None
+    inertia: Optional[np.ndarray] = None
 
 @dataclass
 class Link:
@@ -584,6 +584,10 @@ class URDF:
         return matrix
 
     def update_trimesh_scene(self, trimesh_scene, configuration):
+        # TODO: keep track of non-actuated joints
+        if len(configuration) != len(self.robot.joints):
+            raise ValueError(f"Dimensionality of configuration ({len(configuration)}) doesn't match number of actuated joints ({len(self.robot.joints)}).")
+        
         for j, q in zip(self.robot.joints, configuration):
             matrix = self._forward_kinematics_joint(j, q=q)
             
