@@ -1,3 +1,3 @@
 # Contributors
 
-* Clemens Eppner
+* Clemens Eppner <clemens.eppner@gmail.com>
