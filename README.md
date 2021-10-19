@@ -18,8 +18,10 @@ Insert RANT here
 <!--
 How to deploy
 
-git tag v0.0.1
-python setup.py build
+git tag v0.0.2
+python setup.py bdist_wheel
 twine upload -r testpipy dist/*
+
+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple yourdfpy==0.0.2
 -->
 
