@@ -611,6 +611,8 @@ class URDF:
         origin = v.origin if v.origin is not None else np.eye(4)
 
         if v.geometry is not None:
+            new_s = None
+
             if v.geometry.box is not None:
                 new_s = trimesh.Scene([trimesh.creation.box(extents=v.geometry.box.size)])
             elif v.geometry.sphere is not None:
@@ -619,14 +621,19 @@ class URDF:
                 new_s = trimesh.Scene([trimesh.creation.cylinder(radius=v.geometry.cylinder.radius, height=v.geometry.cylinder.length)])
             elif v.geometry.mesh is not None:
                 print(f'Loading {v.geometry.mesh.filename} from {self.mesh_dir}')
+                # try:
                 new_s = trimesh.load(os.path.join(self.mesh_dir, v.geometry.mesh.filename), force='scene')
+                # except Exception as e:
+                #     print(e)
+                #     pass
             
-            for name, geom in new_s.geometry.items():
-                s.add_geometry(
-                    geometry=geom,
-                    parent_node_name=link_name,
-                    transform=origin @ new_s.graph.get(name)[0],
-                )
+            if new_s is not None:
+                for name, geom in new_s.geometry.items():
+                    s.add_geometry(
+                        geometry=geom,
+                        parent_node_name=link_name,
+                        transform=origin @ new_s.graph.get(name)[0],
+                    )
 
     def get_default_configuration(self):
         config = []
@@ -659,13 +666,9 @@ class URDF:
         for l in self.robot.links:
             s.graph.nodes.add(l.name)
 
-            if use_collision_geometry:
-                for c in l.collisions:
-                    self._add_visual_to_scene(s, c, link_name=l.name)
-            else:
-                for v in l.visuals:
-                    self._add_visual_to_scene(s, v, link_name=l.name)
-
+            meshes = l.collisions if use_collision_geometry else l.visuals
+            for m in meshes:
+                self._add_visual_to_scene(s, m, link_name=l.name)
         
         return s
 
