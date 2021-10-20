@@ -122,10 +122,24 @@ class Robot:
     transmission: List[str] = field(default_factory=list)
     gazebo: List[str] = field(default_factory=list)
 
+def _str2float(s):
+    """Cast string to float if it is not None. Otherwise return None.
+
+    Args:
+        s (str): String to convert or None.
+
+    Returns:
+        str or NoneType: The converted string or None.
+    """
+    return float(s) if s is not None else None
+
 class URDF:
     def __init__(self, robot=None, mesh_dir=None):
         self.robot = robot
         self.mesh_dir = mesh_dir
+
+        self.num_actuated_joints = len([j for j in self.robot.joints if j.type != 'fixed'])
+
 
     def _parse_box(xml_element):
         return Box(size=np.array(xml_element.attrib['size'].split()))
@@ -163,7 +177,7 @@ class URDF:
         )
     
     def _parse_mesh(xml_element):
-        return Mesh(filename=xml_element.get('filename'), scale=float(xml_element.get('scale')))
+        return Mesh(filename=xml_element.get('filename'), scale=float(xml_element.get('scale')) if 'scale' in xml_element.attrib else None)
     
     def _write_mesh(self, xml_parent, mesh):
         attrib = {'filename': mesh.filename}
@@ -179,13 +193,13 @@ class URDF:
     def _parse_geometry(xml_element):
         geometry = Geometry()
         if xml_element[0].tag == 'box':
-            geometry.box = _parse_box(xml_element[0])
+            geometry.box = URDF._parse_box(xml_element[0])
         elif xml_element[0].tag == 'cylinder':
-            geometry.cylinder = _parse_cylinder(xml_element[0])
+            geometry.cylinder = URDF._parse_cylinder(xml_element[0])
         elif xml_element[0].tag == 'sphere':
-            geometry.sphere = _parse_sphere(xml_element[0])
+            geometry.sphere = URDF._parse_sphere(xml_element[0])
         elif xml_element[0].tag == 'mesh':
-            geometry.mesh = _parse_mesh(xml_element[0])
+            geometry.mesh = URDF._parse_mesh(xml_element[0])
         else:
             raise ValueError(f"Unknown tag: {xml_element[0].tag}")
         
@@ -273,8 +287,8 @@ class URDF:
             return None
         
         material = Material()
-        material.color = _parse_color(xml_element.find('color'))
-        material.texture = _parse_texture(xml_element.find('texture'))
+        material.color = URDF._parse_color(xml_element.find('color'))
+        material.texture = URDF._parse_texture(xml_element.find('texture'))
 
         return material
 
@@ -290,9 +304,9 @@ class URDF:
     def _parse_visual(xml_element):
         visual = Visual(name=xml_element.get('name'))
 
-        visual.geometry = _parse_geometry(xml_element.find('geometry'))
-        visual.origin = _parse_origin(xml_element.find('origin'))
-        visual.material = _parse_material(xml_element.find('material'))
+        visual.geometry = URDF._parse_geometry(xml_element.find('geometry'))
+        visual.origin = URDF._parse_origin(xml_element.find('origin'))
+        visual.material = URDF._parse_material(xml_element.find('material'))
 
         return visual
 
@@ -306,8 +320,8 @@ class URDF:
     def _parse_collision(xml_element):
         collision = Collision(name=xml_element.get('name'))
 
-        collision.geometry = _parse_geometry(xml_element.find('geometry'))
-        collision.origin = _parse_origin(xml_element.find('origin'))
+        collision.geometry = URDF._parse_geometry(xml_element.find('geometry'))
+        collision.origin = URDF._parse_origin(xml_element.find('origin'))
 
         return collision
     
@@ -369,9 +383,9 @@ class URDF:
             return None
 
         inertial = Inertial()
-        inertial.origin = _parse_origin(xml_element.find('origin'))
-        inertial.inertia = _parse_inertia(xml_element.find('inertia'))
-        inertial.mass = _parse_mass(xml_element.find('mass'))
+        inertial.origin = URDF._parse_origin(xml_element.find('origin'))
+        inertial.inertia = URDF._parse_inertia(xml_element.find('inertia'))
+        inertial.mass = URDF._parse_mass(xml_element.find('mass'))
         
         return inertial
     
@@ -388,13 +402,13 @@ class URDF:
     def _parse_link(xml_element):
         link = Link(name=xml_element.attrib['name'])
 
-        link.inertial = _parse_inertial(xml_element.find('inertial'))
+        link.inertial = URDF._parse_inertial(xml_element.find('inertial'))
 
         for v in xml_element.findall('visual'):
-            link.visuals.append(_parse_visual(v))
+            link.visuals.append(URDF._parse_visual(v))
 
         for c in xml_element.findall('collision'):
-            link.collisions.append(_parse_collision(c))
+            link.collisions.append(URDF._parse_collision(c))
 
         return link
 
@@ -435,10 +449,10 @@ class URDF:
             return None
         
         limit = Limit()
-        limit.effort = xml_element.get('effort', default=None)
-        limit.velocity = xml_element.get('velocity', default=None)
-        limit.lower = xml_element.get('lower', default=None)
-        limit.upper = xml_element.get('upper', default=None)
+        limit.effort = _str2float(xml_element.get('effort', default=None))
+        limit.velocity = _str2float(xml_element.get('velocity', default=None))
+        limit.lower = _str2float(xml_element.get('lower', default=None))
+        limit.upper = _str2float(xml_element.get('upper', default=None))
 
         return limit
     
@@ -494,10 +508,10 @@ class URDF:
         joint.type = xml_element.get('type', default=None)
         joint.parent = xml_element.find('parent').get('link')
         joint.child = xml_element.find('child').get('link')
-        joint.origin = _parse_origin(xml_element.find('origin'))
-        joint.axis = _parse_axis(xml_element.find('axis'))
-        joint.limit = _parse_limit(xml_element.find('limit'))
-        joint.dynamics = _parse_dynamics(xml_element.find('dynamics'))
+        joint.origin = URDF._parse_origin(xml_element.find('origin'))
+        joint.axis = URDF._parse_axis(xml_element.find('axis'))
+        joint.limit = URDF._parse_limit(xml_element.find('limit'))
+        joint.dynamics = URDF._parse_dynamics(xml_element.find('dynamics'))
 
         return joint
 
@@ -530,9 +544,9 @@ class URDF:
         robot = Robot(name=xml_element.attrib['name'])
 
         for l in xml_element.findall('link'):
-            robot.links.append(_parse_link(l))
+            robot.links.append(URDF._parse_link(l))
         for j in xml_element.findall('joint'):
-            robot.joints.append(_parse_joint(j))
+            robot.joints.append(URDF._parse_joint(j))
         
         return robot
     
@@ -555,7 +569,7 @@ class URDF:
         tree = etree.parse(fname, parser)
 
         root = tree.getroot()
-        robot = _parse_robot(root)
+        robot = URDF._parse_robot(root)
 
         return URDF(robot=robot, mesh_dir=os.path.dirname(fname))
 
@@ -614,10 +628,27 @@ class URDF:
                     transform=origin @ new_s.graph.get(name)[0],
                 )
 
-    def get_scene(self, configuration=None):
+    def get_default_configuration(self):
+        config = []
+        for j in self.robot.joints:
+            if j.type == 'revolute' or j.type == 'prismatic':
+                if j.limit is not None:
+                    config.append(j.limit.lower + 0.5 * (j.limit.upper - j.limit.lower))
+                else:
+                    config.append(0.0)
+            elif j.type == 'continuous' or j.type == 'fixed':
+                config.append(0.0)
+            elif j.type == 'floating':
+                config.append([0.0] * 6)
+            elif j.type == 'planar':
+                config.append([0.0] * 2)
+
+        return np.array(config)
+    
+    def get_scene(self, configuration=None, use_collision_geometry=False):
         s = trimesh.scene.Scene(base_frame=self._determine_base_link())
 
-        configuration = np.zeros(len(self.robot.joints)) if configuration is None else configuration
+        configuration = self.get_default_configuration() if configuration is None else configuration
         assert(len(configuration) == len(self.robot.joints))
 
         for j, q in zip(self.robot.joints, configuration):
@@ -627,8 +658,13 @@ class URDF:
 
         for l in self.robot.links:
             s.graph.nodes.add(l.name)
-            for v in l.visuals:
-                self._add_visual_to_scene(s, v, link_name=l.name)
+
+            if use_collision_geometry:
+                for c in l.collisions:
+                    self._add_visual_to_scene(s, c, link_name=l.name)
+            else:
+                for v in l.visuals:
+                    self._add_visual_to_scene(s, v, link_name=l.name)
 
         
         return s
