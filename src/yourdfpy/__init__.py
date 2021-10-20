@@ -19,7 +19,7 @@ import os
 import random
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, Union, List
 
 import trimesh
 import trimesh.transformations as tra
@@ -43,7 +43,7 @@ class Box:
 @dataclass
 class Mesh:
     filename: str
-    scale: Optional[float] = None
+    scale: Optional[Union[float, np.ndarray]] = None
 
 @dataclass
 class Geometry:
@@ -176,8 +176,19 @@ class URDF:
             }
         )
     
+    def _parse_scale(xml_element):
+        if 'scale' in xml_element.attrib:
+            s = xml_element.get('scale').split()
+            if len(s) == 0:
+                return None
+            elif len(s) == 1:
+                return float(s[0])
+            else:
+                return np.array(list(map(float, s)))
+        return None
+    
     def _parse_mesh(xml_element):
-        return Mesh(filename=xml_element.get('filename'), scale=float(xml_element.get('scale')) if 'scale' in xml_element.attrib else None)
+        return Mesh(filename=xml_element.get('filename'), scale=URDF._parse_scale(xml_element))
     
     def _write_mesh(self, xml_parent, mesh):
         attrib = {'filename': mesh.filename}
@@ -607,7 +618,7 @@ class URDF:
             
             trimesh_scene.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
 
-    def _add_visual_to_scene(self, s, v, link_name):
+    def _add_visual_to_scene(self, s, v, link_name, load_geometry=True):
         origin = v.origin if v.origin is not None else np.eye(4)
 
         if v.geometry is not None:
@@ -619,10 +630,21 @@ class URDF:
                 new_s = trimesh.Scene([trimesh.creation.uv_sphere(radius=v.geometry.sphere.radius)])
             elif v.geometry.cylinder is not None:
                 new_s = trimesh.Scene([trimesh.creation.cylinder(radius=v.geometry.cylinder.radius, height=v.geometry.cylinder.length)])
-            elif v.geometry.mesh is not None:
+            elif v.geometry.mesh is not None and load_geometry:
                 print(f'Loading {v.geometry.mesh.filename} from {self.mesh_dir}')
                 # try:
                 new_s = trimesh.load(os.path.join(self.mesh_dir, v.geometry.mesh.filename), force='scene')
+
+                # scale mesh appropriately
+                if v.geometry.mesh.scale is not None:
+                    if isinstance(v.geometry.mesh.scale, float):
+                        new_s = new_s.scaled(v.geometry.mesh.scale)
+                    elif isinstance(v.geometry.mesh.scale, np.ndarray):
+                        if np.all(v.geometry.mesh.scale == v.geometry.mesh.scale[0]):
+                            print(f"Warning: Can't scale axis independently, will use the first entry of '{v.geometry.mesh.scale}'")
+                        new_s = new_s.scaled(v.geometry.mesh.scale[0])
+                    else:
+                        print(f"Warning: Can't interpret scale '{v.geometry.mesh.scale}'")
                 # except Exception as e:
                 #     print(e)
                 #     pass
@@ -652,7 +674,7 @@ class URDF:
 
         return np.array(config)
     
-    def get_scene(self, configuration=None, use_collision_geometry=False):
+    def get_scene(self, configuration=None, use_collision_geometry=False, load_geometry=True):
         s = trimesh.scene.Scene(base_frame=self._determine_base_link())
 
         configuration = self.get_default_configuration() if configuration is None else configuration
@@ -668,7 +690,7 @@ class URDF:
 
             meshes = l.collisions if use_collision_geometry else l.visuals
             for m in meshes:
-                self._add_visual_to_scene(s, m, link_name=l.name)
+                self._add_visual_to_scene(s, m, link_name=l.name, load_geometry=load_geometry)
         
         return s
 
