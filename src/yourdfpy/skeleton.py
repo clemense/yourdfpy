@@ -12,9 +12,6 @@ which will install the command ``fibonacci`` inside your current environment.
 Besides console scripts, the header (i.e. until ``_logger``...) of this file can
 also be used as template for Python modules.
 
-Note:
-    This skeleton file can be safely removed if not needed!
-
 References:
     - https://setuptools.readthedocs.io/en/latest/userguide/entry_point.html
     - https://pip.pypa.io/en/stable/reference/pip_install
@@ -25,6 +22,7 @@ import logging
 import sys
 
 from yourdfpy import __version__
+from yourdfpy import URDF
 
 __author__ = "Clemens Eppner"
 __copyright__ = "Clemens Eppner"
@@ -72,13 +70,28 @@ def parse_args(args):
     Returns:
       :obj:`argparse.Namespace`: command line parameters namespace
     """
-    parser = argparse.ArgumentParser(description="Just a Fibonacci demonstration")
+    parser = argparse.ArgumentParser(description="Visualize a URDF model.")
     parser.add_argument(
         "--version",
         action="version",
         version="yourdfpy {ver}".format(ver=__version__),
     )
-    parser.add_argument(dest="n", help="n-th Fibonacci number", type=int, metavar="INT")
+    parser.add_argument(
+        "input",
+        help="URDF file name.",
+    )
+    parser.add_argument(
+        "-c",
+        "--configuration",
+        nargs="+",
+        type=float,
+        help="Configuration of the visualized URDF model.",
+    )
+    parser.add_argument(
+        "--collision",
+        action="store_true",
+        help="Use collision geometry for the visualized URDF model.",
+    )
     parser.add_argument(
         "-v",
         "--verbose",
@@ -123,7 +136,10 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
     _logger.debug("Starting crazy calculations...")
-    print("The {}-th Fibonacci number is {}".format(args.n, fib(args.n)))
+    
+    urdf_model = URDF.from_xml_file(args.input)
+    urdf_model.get_scene(configuration=args.configuration, use_collision_geometry=args.collision).show()
+
     _logger.info("Script ends here")
 
 
