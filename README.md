@@ -18,10 +18,12 @@ Insert RANT here
 <!--
 How to deploy
 
-git tag v0.0.2
+git tag v<semver>
 python setup.py bdist_wheel
-twine upload -r testpipy dist/*
+twine upload -r testpypi dist/*
 
-python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple yourdfpy==0.0.2
+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple yourdfpy==v<semver>
+
+twine upload 
 -->
 
