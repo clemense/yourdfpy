@@ -20,6 +20,7 @@ import random
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Optional, Union, List
+from functools import partial
 
 import trimesh
 import trimesh.transformations as tra
@@ -122,6 +123,39 @@ class Robot:
     transmission: List[str] = field(default_factory=list)
     gazebo: List[str] = field(default_factory=list)
 
+
+class URDFError(Exception):
+    """General URDF exception."""
+    def __init__(self, msg):
+        super(URDFError,self).__init__()
+        self.msg = msg
+
+    def __str__(self):
+        return type(self).__name__ + ': ' + self.msg
+
+    def __repr__(self):
+        return type(self).__name__ + '("' + self.msg + '")'
+
+class URDFIncompleteError(URDFError):
+    """Raised when needed data for an object isn't there."""
+    pass
+
+class URDFBrokenRefError(URDFError):
+    """Raised when a referenced object is not found in the scope."""
+    pass
+
+class URDFMalformedError(URDFError):
+    """Raised when data is found to be corrupted in some way."""
+    pass
+
+class URDFUnsupportedError(URDFError):
+    """Raised when some unexpectedly unsupported feature is found."""
+    pass
+
+class URDFSaveValidationError(URDFError):
+    """Raised when XML validation fails when saving."""
+    pass
+
 def _str2float(s):
     """Cast string to float if it is not None. Otherwise return None.
 
@@ -133,12 +167,42 @@ def _str2float(s):
     """
     return float(s) if s is not None else None
 
+def filename_handler_ignore_directive(fname):
+    return fname.split(f":{os.path.sep}{os.path.sep}")[-1]
+
+def filename_handler_ignore_directive_package(fname):
+    if fname.startswith("package:"):
+        return os.path.sep.join(fname.split(f":{os.path.sep}{os.path.sep}")[-1].split(os.path.sep)[1:])
+    return filename_handler_ignore_directive(fname)
+
+def filename_handler_relative(fname, mesh_dir):
+    return os.path.join(mesh_dir, filename_handler_ignore_directive_package(fname))
+
+def filename_handler_relative_to_urdf_file(fname, urdf_fname):
+    return os.path.join(os.path.dirname(urdf_fname), filename_handler_ignore_directive(fname))
+
+def filename_handler_magic(fname, mesh_dir):
+    for fn in [
+        partial(filename_handler_relative, mesh_dir=mesh_dir)
+    ]:
+        candidate_fname = fn(fname=fname)
+        if os.path.isfile(candidate_fname):
+            return candidate_fname
+    print(f"Unable to resolve filename: {fname}")
+    return fname
+
 class URDF:
-    def __init__(self, robot=None, mesh_dir=None):
+    def __init__(self, robot=None, filename_handler=None, mesh_dir=""):
         self.robot = robot
-        self.mesh_dir = mesh_dir
+        if filename_handler is None:
+            self._filename_handler = partial(filename_handler_magic, mesh_dir=mesh_dir)
+        else:
+            self._filename_handler = filename_handler
 
         self.num_actuated_joints = len([j for j in self.robot.joints if j.type != 'fixed'])
+
+        self.errors = []
+        self.maskedErrors = []
 
 
     def _parse_box(xml_element):
@@ -561,6 +625,30 @@ class URDF:
         
         return robot
     
+    def _validate_robot(self, robot):
+        if robot is not None:
+            if robot.name is None:
+                raise URDFIncompleteError(f"The <robot> tag misses a 'name' attribute.")
+            elif len(robot.name) == 0:
+                raise URDFIncompleteError(f"The <robot> tag has an empty 'name' attribute.")
+
+
+    def handleError(self, error):
+        self.errors.append(error)
+        if not type(error) in self.maskedErrors:
+            raise
+
+    def ignoreErrors(self, *args):
+        """Add exceptions to the mask for ignoring or clear the mask if None given.
+        You call c.ignoreErrors(e1, e2, ... ) if you want the loader to ignore those
+        exceptions and continue loading whatever it can. If you want to empty the
+        mask so all exceptions abort the load just call c.ignoreErrors(None).
+        """
+        if args == [ None ]:
+            self.maskedErrors = []
+        else:
+            for e in args: self.maskedErrors.append(e)
+    
     def _write_robot(self, robot):
         xml_element = etree.Element(
             'robot',
@@ -575,14 +663,14 @@ class URDF:
 
         return xml_element
 
-    def from_xml_file(fname):
+    def from_xml_file(fname, **kwargs):
         parser = etree.XMLParser(remove_blank_text=True)
         tree = etree.parse(fname, parser)
 
         root = tree.getroot()
         robot = URDF._parse_robot(root)
 
-        return URDF(robot=robot, mesh_dir=os.path.dirname(fname))
+        return URDF(robot=robot, mesh_dir=os.path.dirname(fname), *kwargs)
 
     def _determine_base_link(self):
         link_names = [l.name for l in self.robot.links]
@@ -631,23 +719,29 @@ class URDF:
             elif v.geometry.cylinder is not None:
                 new_s = trimesh.Scene([trimesh.creation.cylinder(radius=v.geometry.cylinder.radius, height=v.geometry.cylinder.length)])
             elif v.geometry.mesh is not None and load_geometry:
-                print(f'Loading {v.geometry.mesh.filename} from {self.mesh_dir}')
-                # try:
-                new_s = trimesh.load(os.path.join(self.mesh_dir, v.geometry.mesh.filename), force='scene')
+                new_filename = self._filename_handler(fname=v.geometry.mesh.filename)
 
-                # scale mesh appropriately
-                if v.geometry.mesh.scale is not None:
-                    if isinstance(v.geometry.mesh.scale, float):
-                        new_s = new_s.scaled(v.geometry.mesh.scale)
-                    elif isinstance(v.geometry.mesh.scale, np.ndarray):
-                        if np.all(v.geometry.mesh.scale == v.geometry.mesh.scale[0]):
-                            print(f"Warning: Can't scale axis independently, will use the first entry of '{v.geometry.mesh.scale}'")
-                        new_s = new_s.scaled(v.geometry.mesh.scale[0])
-                    else:
-                        print(f"Warning: Can't interpret scale '{v.geometry.mesh.scale}'")
-                # except Exception as e:
-                #     print(e)
-                #     pass
+                if os.path.isfile(new_filename):
+                    print(f'Loading {v.geometry.mesh.filename} as {new_filename}')
+                    # try:
+                    # os.path.join(self.mesh_dir, v.geometry.mesh.filename)
+                    new_s = trimesh.load(new_filename, force='scene')
+
+                    # scale mesh appropriately
+                    if v.geometry.mesh.scale is not None:
+                        if isinstance(v.geometry.mesh.scale, float):
+                            new_s = new_s.scaled(v.geometry.mesh.scale)
+                        elif isinstance(v.geometry.mesh.scale, np.ndarray):
+                            if np.all(v.geometry.mesh.scale == v.geometry.mesh.scale[0]):
+                                print(f"Warning: Can't scale axis independently, will use the first entry of '{v.geometry.mesh.scale}'")
+                            new_s = new_s.scaled(v.geometry.mesh.scale[0])
+                        else:
+                            print(f"Warning: Can't interpret scale '{v.geometry.mesh.scale}'")
+                    # except Exception as e:
+                    #     print(e)
+                    #     pass
+                else:
+                    print(f"Can't find {new_filename}")
             
             if new_s is not None:
                 for name, geom in new_s.geometry.items():
@@ -693,6 +787,15 @@ class URDF:
                 self._add_visual_to_scene(s, m, link_name=l.name, load_geometry=load_geometry)
         
         return s
+
+    def  _validate_filenames(self, robot):
+        for l in robot.links:
+            meshes = [m.geometry.mesh for m in l.collisions + l.visuals if m.geometry.mesh is not None]
+            for m in meshes:
+                print(m.filename, "-->", self._filename_handler(m.filename))
+                if not os.path.isfile(self._filename_handler(m.filename)):
+                    return False
+        return True
 
     def write_xml(self):
         xml_element = self._write_robot(self.robot)
