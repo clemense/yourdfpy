@@ -17,6 +17,7 @@ finally:
 
 import os
 import random
+import logging
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Optional, Union, List
@@ -27,6 +28,8 @@ import trimesh.transformations as tra
 
 # import xml.etree.ElementTree as ET
 from lxml import etree
+
+_logger = logging.getLogger(__name__)
 
 @dataclass
 class Sphere:
@@ -192,18 +195,43 @@ def filename_handler_magic(fname, mesh_dir):
     return fname
 
 class URDF:
-    def __init__(self, robot=None, filename_handler=None, mesh_dir=""):
-        self.robot = robot
+    def __init__(self, xml_root, generate_scene_graph=True, load_meshes=True, filename_handler=None, mesh_dir=""):
+        self._xml_root = xml_root
+
         if filename_handler is None:
             self._filename_handler = partial(filename_handler_magic, mesh_dir=mesh_dir)
         else:
             self._filename_handler = filename_handler
+        
+        self.robot = URDF._parse_robot(xml_root)
 
         self.num_actuated_joints = len([j for j in self.robot.joints if j.type != 'fixed'])
 
         self.errors = []
         self.maskedErrors = []
 
+        if generate_scene_graph:
+            self._scene = self._create_scene(load_geometry=load_meshes)
+            # if load_meshes:
+            #     self._load_meshes()
+        else:
+            self._scene = None
+
+    @property
+    def scene(self):
+        return self._scene
+
+    def show(self, collision_geometry=False):
+        if collision_geometry:
+            self.scene.show()
+        else:
+            self.scene.show()
+
+    def _generate_scene_graph(self):
+        pass
+
+    def _load_meshes(self):
+        pass
 
     def _parse_box(xml_element):
         return Box(size=np.array(xml_element.attrib['size'].split()))
@@ -668,9 +696,8 @@ class URDF:
         tree = etree.parse(fname, parser)
 
         root = tree.getroot()
-        robot = URDF._parse_robot(root)
+        return URDF(xml_root=root, mesh_dir=os.path.dirname(fname), *kwargs)
 
-        return URDF(robot=robot, mesh_dir=os.path.dirname(fname), *kwargs)
 
     def _determine_base_link(self):
         link_names = [l.name for l in self.robot.links]
@@ -732,7 +759,7 @@ class URDF:
                         if isinstance(v.geometry.mesh.scale, float):
                             new_s = new_s.scaled(v.geometry.mesh.scale)
                         elif isinstance(v.geometry.mesh.scale, np.ndarray):
-                            if np.all(v.geometry.mesh.scale == v.geometry.mesh.scale[0]):
+                            if not np.all(v.geometry.mesh.scale == v.geometry.mesh.scale[0]):
                                 print(f"Warning: Can't scale axis independently, will use the first entry of '{v.geometry.mesh.scale}'")
                             new_s = new_s.scaled(v.geometry.mesh.scale[0])
                         else:
@@ -768,7 +795,7 @@ class URDF:
 
         return np.array(config)
     
-    def get_scene(self, configuration=None, use_collision_geometry=False, load_geometry=True):
+    def _create_scene(self, configuration=None, use_collision_geometry=False, load_geometry=True):
         s = trimesh.scene.Scene(base_frame=self._determine_base_link())
 
         configuration = self.get_default_configuration() if configuration is None else configuration
@@ -788,11 +815,11 @@ class URDF:
         
         return s
 
-    def  _validate_filenames(self, robot):
-        for l in robot.links:
+    def validate_filenames(self):
+        for l in self.robot.links:
             meshes = [m.geometry.mesh for m in l.collisions + l.visuals if m.geometry.mesh is not None]
             for m in meshes:
-                print(m.filename, "-->", self._filename_handler(m.filename))
+                _logger.debug(m.filename, "-->", self._filename_handler(m.filename))
                 if not os.path.isfile(self._filename_handler(m.filename)):
                     return False
         return True
