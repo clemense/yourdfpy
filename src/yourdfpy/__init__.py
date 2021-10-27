@@ -195,15 +195,20 @@ def filename_handler_magic(fname, mesh_dir):
     return fname
 
 class URDF:
-    def __init__(self, xml_root, generate_scene_graph=True, load_meshes=True, filename_handler=None, mesh_dir=""):
-        self._xml_root = xml_root
+    def __init__(self, xml_root=None, robot=None, generate_scene_graph=True, load_meshes=True, filename_handler=None, mesh_dir=""):
+        assert bool(xml_root is None) ^ bool(robot is None)
 
         if filename_handler is None:
             self._filename_handler = partial(filename_handler_magic, mesh_dir=mesh_dir)
         else:
             self._filename_handler = filename_handler
         
-        self.robot = URDF._parse_robot(xml_root)
+        if xml_root is None:
+            self.robot = robot
+        else:
+            self._xml_root = xml_root
+            self.robot = URDF._parse_robot(xml_root)
+        
         self._create_maps()
 
         self.num_actuated_joints = len([j for j in self.robot.joints if j.type != 'fixed'])
@@ -832,6 +837,24 @@ class URDF:
                 self._add_visual_to_scene(s, m, link_name=l.name, load_geometry=load_geometry)
         
         return s
+
+    def _successors(self, node):
+        """
+        Get all nodes of the scene that succeeds a specified node.
+
+        Parameters
+        ------------
+        node : any
+          Hashable key in `scene.graph`
+
+        Returns
+        -----------
+        subnodes : set[str]
+          Set of nodes.
+        """
+        # get every node that is a successor to specified node
+        # this includes `node`
+        return self._scene.graph.transforms.successors(node)
 
     def validate_filenames(self):
         for l in self.robot.links:
