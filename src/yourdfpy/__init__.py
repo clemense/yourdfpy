@@ -204,6 +204,7 @@ class URDF:
             self._filename_handler = filename_handler
         
         self.robot = URDF._parse_robot(xml_root)
+        self._create_maps()
 
         self.num_actuated_joints = len([j for j in self.robot.joints if j.type != 'fixed'])
 
@@ -221,6 +222,14 @@ class URDF:
     def scene(self):
         return self._scene
 
+    @property
+    def link_map(self):
+        return self._link_map
+    
+    @property
+    def joint_map(self):
+        return self._joint_map
+    
     def show(self, collision_geometry=False):
         if collision_geometry:
             self.scene.show()
@@ -232,6 +241,15 @@ class URDF:
 
     def _load_meshes(self):
         pass
+
+    def _create_maps(self):
+        self._joint_map = {}
+        for j in self.robot.joints:
+            self._joint_map[j.name] = j
+        
+        self._link_map = {}
+        for l in self.robot.links:
+            self._link_map[l.name] = l
 
     def _parse_box(xml_element):
         return Box(size=np.array(xml_element.attrib['size'].split()))
