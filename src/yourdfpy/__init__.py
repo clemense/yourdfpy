@@ -16,6 +16,7 @@ finally:
     del version, PackageNotFoundError
 
 import os
+import copy
 import random
 import logging
 import numpy as np
@@ -308,7 +309,10 @@ class URDF:
     def _write_mesh(self, xml_parent, mesh):
         attrib = {'filename': mesh.filename}
         if mesh.scale is not None:
-            attrib['scale'] = " ".join([str(mesh.scale)]*3)
+            if isinstance(mesh.scale, float) or isinstance(mesh.scale, int):
+                attrib['scale'] = " ".join([str(mesh.scale)]*3)
+            else:
+                attrib['scale'] = " ".join(map(str, mesh.scale))
         
         etree.SubElement(
             xml_parent,
@@ -719,7 +723,11 @@ class URDF:
         tree = etree.parse(fname, parser)
 
         root = tree.getroot()
-        return URDF(xml_root=root, mesh_dir=os.path.dirname(fname), *kwargs)
+
+        if not 'mesh_dir' in kwargs:
+            kwargs['mesh_dir'] = os.path.dirname(fname)
+        
+        return URDF(xml_root=root, **kwargs)
 
 
     def _determine_base_link(self):
@@ -855,6 +863,53 @@ class URDF:
         # get every node that is a successor to specified node
         # this includes `node`
         return self._scene.graph.transforms.successors(node)
+
+    def _create_subrobot(self, robot_name, root_link_name):
+        subrobot = Robot(name=robot_name)
+        subnodes = self._successors(node=root_link_name)
+
+        if len(subnodes) > 0:
+            for node in subnodes:
+                if node in self.link_map:
+                    subrobot.links.append(
+                        copy.deepcopy(self.link_map[node])
+                    )
+            for joint_name, joint in self.joint_map.items():
+                if joint.parent in subnodes and joint.child in subnodes:
+                    subrobot.joints.append(
+                        copy.deepcopy(self.joint_map[joint_name])
+                    )
+        
+        return subrobot
+        
+    def split_along_joints(self, joint_type="floating"):
+        result = [
+            (np.eye(4), URDF(robot=copy.deepcopy(self.robot), load_meshes=False, generate_scene_graph=False))
+        ]
+
+        # find all freejoints
+        joint_names = [j.name for j in self.robot.joints if j.type == joint_type]
+        for joint_name in joint_names:
+            root_link = self.link_map[self.joint_map[joint_name].child]
+            new_robot = self._create_subrobot(
+                robot_name=root_link.name,
+                root_link_name=root_link.name,
+            )
+
+            result.append(
+                (
+                    self._scene.graph.get(root_link.name)[0],
+                    URDF(robot=new_robot, load_meshes=False, generate_scene_graph=False),
+                )
+            )
+
+            # remove links and joints from
+            for j in new_robot.joints:
+                result[0][-1].robot.joints.remove(result[0][-1].joint_map[j.name])
+            for l in new_robot.links:
+                result[0][-1].robot.links.remove(result[0][-1].link_map[l.name])
+        
+        return result            
 
     def validate_filenames(self):
         for l in self.robot.links:
