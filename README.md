@@ -18,6 +18,10 @@ Insert RANT here
 <!--
 How to deploy
 
+git tag -l
+rm dist/*
+rm -rf build/
+
 git tag v<semver>
 python setup.py bdist_wheel
 twine upload -r testpypi dist/*
