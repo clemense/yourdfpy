@@ -28,6 +28,6 @@ twine upload -r testpypi dist/*
 
 python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple yourdfpy==v<semver>
 
-twine upload 
+twine upload dist/*
 -->
 
