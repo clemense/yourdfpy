@@ -20,7 +20,7 @@ import copy
 import random
 import logging
 import numpy as np
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, is_dataclass
 from typing import Optional, Union, List
 from functools import partial
 
@@ -728,6 +728,23 @@ class URDF:
             kwargs['mesh_dir'] = os.path.dirname(fname)
         
         return URDF(xml_root=root, **kwargs)
+
+    def contains(self, key, value, element=None):
+        if element is None:
+            element = self.robot
+        
+        result = False
+        for field in element.__dataclass_fields__:
+            field_value = getattr(element, field)
+            if is_dataclass(field_value):
+                result = result or self.contains(key=key, value=value, element=field_value)
+            elif isinstance(field_value, list) and len(field_value) > 0 and is_dataclass(field_value[0]):
+                for field_value_element in field_value:
+                    result = result or self.contains(key=key, value=value, element=field_value_element)
+            else:
+                if key == field and value == field_value:
+                    result = True
+        return result
 
 
     def _determine_base_link(self):
