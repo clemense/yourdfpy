@@ -32,23 +32,28 @@ from lxml import etree
 
 _logger = logging.getLogger(__name__)
 
+
 @dataclass
 class Sphere:
     radius: float
+
 
 @dataclass
 class Cylinder:
     radius: float
     length: float
 
+
 @dataclass
 class Box:
     size: np.ndarray
+
 
 @dataclass
 class Mesh:
     filename: str
     scale: Optional[Union[float, np.ndarray]] = None
+
 
 @dataclass
 class Geometry:
@@ -57,18 +62,22 @@ class Geometry:
     sphere: Optional[Sphere] = None
     mesh: Optional[Mesh] = None
 
+
 @dataclass
 class Color:
     rgba: np.ndarray
+
 
 @dataclass
 class Texture:
     filename: str
 
+
 @dataclass
 class Material:
     color: Optional[Color] = None
     texture: Optional[Texture] = None
+
 
 @dataclass
 class Visual:
@@ -77,17 +86,20 @@ class Visual:
     geometry: Optional[Geometry] = None  # That's not really optional according to ROS
     material: Optional[Material] = None
 
+
 @dataclass
 class Collision:
     name: str
     origin: Optional[np.ndarray] = None
     geometry: Geometry = None
 
+
 @dataclass
 class Inertial:
     origin: Optional[np.ndarray] = None
     mass: Optional[float] = None
     inertia: Optional[np.ndarray] = None
+
 
 @dataclass
 class Link:
@@ -96,10 +108,12 @@ class Link:
     visuals: List[Visual] = field(default_factory=list)
     collisions: List[Collision] = field(default_factory=list)
 
+
 @dataclass
 class Dynamics:
     damping: Optional[float] = None
     friction: Optional[float] = None
+
 
 @dataclass
 class Limit:
@@ -107,6 +121,7 @@ class Limit:
     velocity: Optional[float] = None
     lower: Optional[float] = None
     upper: Optional[float] = None
+
 
 @dataclass
 class Joint:
@@ -119,6 +134,7 @@ class Joint:
     dynamics: Optional[Dynamics] = None
     limit: Optional[Limit] = None
 
+
 @dataclass
 class Robot:
     name: str
@@ -130,35 +146,47 @@ class Robot:
 
 class URDFError(Exception):
     """General URDF exception."""
+
     def __init__(self, msg):
-        super(URDFError,self).__init__()
+        super(URDFError, self).__init__()
         self.msg = msg
 
     def __str__(self):
-        return type(self).__name__ + ': ' + self.msg
+        return type(self).__name__ + ": " + self.msg
 
     def __repr__(self):
         return type(self).__name__ + '("' + self.msg + '")'
 
+
 class URDFIncompleteError(URDFError):
     """Raised when needed data for an object isn't there."""
+
     pass
+
 
 class URDFBrokenRefError(URDFError):
     """Raised when a referenced object is not found in the scope."""
+
     pass
+
 
 class URDFMalformedError(URDFError):
     """Raised when data is found to be corrupted in some way."""
+
     pass
+
 
 class URDFUnsupportedError(URDFError):
     """Raised when some unexpectedly unsupported feature is found."""
+
     pass
+
 
 class URDFSaveValidationError(URDFError):
     """Raised when XML validation fails when saving."""
+
     pass
+
 
 def _str2float(s):
     """Cast string to float if it is not None. Otherwise return None.
@@ -171,48 +199,66 @@ def _str2float(s):
     """
     return float(s) if s is not None else None
 
+
 def filename_handler_ignore_directive(fname):
     return fname.split(f":{os.path.sep}{os.path.sep}")[-1]
 
+
 def filename_handler_ignore_directive_package(fname):
     if fname.startswith("package:"):
-        return os.path.sep.join(fname.split(f":{os.path.sep}{os.path.sep}")[-1].split(os.path.sep)[1:])
+        return os.path.sep.join(
+            fname.split(f":{os.path.sep}{os.path.sep}")[-1].split(os.path.sep)[1:]
+        )
     return filename_handler_ignore_directive(fname)
+
 
 def filename_handler_relative(fname, mesh_dir):
     return os.path.join(mesh_dir, filename_handler_ignore_directive_package(fname))
 
+
 def filename_handler_relative_to_urdf_file(fname, urdf_fname):
-    return os.path.join(os.path.dirname(urdf_fname), filename_handler_ignore_directive(fname))
+    return os.path.join(
+        os.path.dirname(urdf_fname), filename_handler_ignore_directive(fname)
+    )
+
 
 def filename_handler_magic(fname, mesh_dir):
-    for fn in [
-        partial(filename_handler_relative, mesh_dir=mesh_dir)
-    ]:
+    for fn in [partial(filename_handler_relative, mesh_dir=mesh_dir)]:
         candidate_fname = fn(fname=fname)
         if os.path.isfile(candidate_fname):
             return candidate_fname
     print(f"Unable to resolve filename: {fname}")
     return fname
 
+
 class URDF:
-    def __init__(self, xml_root=None, robot=None, generate_scene_graph=True, load_meshes=True, filename_handler=None, mesh_dir=""):
+    def __init__(
+        self,
+        xml_root=None,
+        robot=None,
+        generate_scene_graph=True,
+        load_meshes=True,
+        filename_handler=None,
+        mesh_dir="",
+    ):
         assert bool(xml_root is None) ^ bool(robot is None)
 
         if filename_handler is None:
             self._filename_handler = partial(filename_handler_magic, mesh_dir=mesh_dir)
         else:
             self._filename_handler = filename_handler
-        
+
         if xml_root is None:
             self.robot = robot
         else:
             self._xml_root = xml_root
             self.robot = URDF._parse_robot(xml_root)
-        
+
         self._create_maps()
 
-        self.num_actuated_joints = len([j for j in self.robot.joints if j.type != 'fixed'])
+        self.num_actuated_joints = len(
+            [j for j in self.robot.joints if j.type != "fixed"]
+        )
 
         self.errors = []
         self.maskedErrors = []
@@ -231,11 +277,11 @@ class URDF:
     @property
     def link_map(self):
         return self._link_map
-    
+
     @property
     def joint_map(self):
         return self._joint_map
-    
+
     def show(self, collision_geometry=False):
         if collision_geometry:
             self.scene.show()
@@ -252,49 +298,41 @@ class URDF:
         self._joint_map = {}
         for j in self.robot.joints:
             self._joint_map[j.name] = j
-        
+
         self._link_map = {}
         for l in self.robot.links:
             self._link_map[l.name] = l
 
     def _parse_box(xml_element):
-        return Box(size=np.array(xml_element.attrib['size'].split()))
-    
+        return Box(size=np.array(xml_element.attrib["size"].split()))
+
     def _write_box(self, xml_parent, box):
         etree.SubElement(
-            xml_parent,
-            'box',
-            attrib={'size': ' '.join(map(str, box.size))}
+            xml_parent, "box", attrib={"size": " ".join(map(str, box.size))}
         )
-    
+
     def _parse_cylinder(xml_element):
-        return Cylinder(radius=float(xml_element.attrib['radius']), length=float(xml_element.attrib['length']))
-    
+        return Cylinder(
+            radius=float(xml_element.attrib["radius"]),
+            length=float(xml_element.attrib["length"]),
+        )
+
     def _write_cylinder(self, xml_parent, cylinder):
         etree.SubElement(
             xml_parent,
-            'cylinder',
-            attrib={
-                'radius': str(cylinder.radius),
-                'length': str(cylinder.length)
-            }
+            "cylinder",
+            attrib={"radius": str(cylinder.radius), "length": str(cylinder.length)},
         )
-    
+
     def _parse_sphere(xml_element):
-        return Sphere(radius=float(xml_element.attrib['radius']))
-    
+        return Sphere(radius=float(xml_element.attrib["radius"]))
+
     def _write_sphere(self, xml_parent, sphere):
-        etree.SubElement(
-            xml_parent,
-            'sphere',
-            attrib={
-                'radius': str(sphere.radius)
-            }
-        )
-    
+        etree.SubElement(xml_parent, "sphere", attrib={"radius": str(sphere.radius)})
+
     def _parse_scale(xml_element):
-        if 'scale' in xml_element.attrib:
-            s = xml_element.get('scale').split()
+        if "scale" in xml_element.attrib:
+            s = xml_element.get("scale").split()
             if len(s) == 0:
                 return None
             elif len(s) == 1:
@@ -302,47 +340,42 @@ class URDF:
             else:
                 return np.array(list(map(float, s)))
         return None
-    
+
     def _parse_mesh(xml_element):
-        return Mesh(filename=xml_element.get('filename'), scale=URDF._parse_scale(xml_element))
-    
+        return Mesh(
+            filename=xml_element.get("filename"), scale=URDF._parse_scale(xml_element)
+        )
+
     def _write_mesh(self, xml_parent, mesh):
-        attrib = {'filename': mesh.filename}
+        attrib = {"filename": mesh.filename}
         if mesh.scale is not None:
             if isinstance(mesh.scale, float) or isinstance(mesh.scale, int):
-                attrib['scale'] = " ".join([str(mesh.scale)]*3)
+                attrib["scale"] = " ".join([str(mesh.scale)] * 3)
             else:
-                attrib['scale'] = " ".join(map(str, mesh.scale))
-        
-        etree.SubElement(
-            xml_parent,
-            'mesh',
-            attrib=attrib
-        )
-    
+                attrib["scale"] = " ".join(map(str, mesh.scale))
+
+        etree.SubElement(xml_parent, "mesh", attrib=attrib)
+
     def _parse_geometry(xml_element):
         geometry = Geometry()
-        if xml_element[0].tag == 'box':
+        if xml_element[0].tag == "box":
             geometry.box = URDF._parse_box(xml_element[0])
-        elif xml_element[0].tag == 'cylinder':
+        elif xml_element[0].tag == "cylinder":
             geometry.cylinder = URDF._parse_cylinder(xml_element[0])
-        elif xml_element[0].tag == 'sphere':
+        elif xml_element[0].tag == "sphere":
             geometry.sphere = URDF._parse_sphere(xml_element[0])
-        elif xml_element[0].tag == 'mesh':
+        elif xml_element[0].tag == "mesh":
             geometry.mesh = URDF._parse_mesh(xml_element[0])
         else:
             raise ValueError(f"Unknown tag: {xml_element[0].tag}")
-        
+
         return geometry
 
     def _write_geometry(self, xml_parent, geometry):
         if geometry is None:
             return
-        
-        xml_element = etree.SubElement(
-            xml_parent,
-            'geometry'
-        )
+
+        xml_element = etree.SubElement(xml_parent, "geometry")
         if geometry.box is not None:
             self._write_box(xml_element, geometry.box)
         elif geometry.cylinder is not None:
@@ -351,112 +384,105 @@ class URDF:
             self._write_sphere(xml_element, geometry.sphere)
         elif geometry.mesh is not None:
             self._write_mesh(xml_element, geometry.mesh)
-    
+
     def _parse_origin(xml_element):
         if xml_element is None:
             return None
-        
-        xyz = xml_element.get('xyz', default='0 0 0')
-        rpy = xml_element.get('rpy', default='0 0 0')
 
-        return tra.compose_matrix(translate=np.array(list(map(float, xyz.split()))), angles=np.array(list(map(float, rpy.split()))))
-    
+        xyz = xml_element.get("xyz", default="0 0 0")
+        rpy = xml_element.get("rpy", default="0 0 0")
+
+        return tra.compose_matrix(
+            translate=np.array(list(map(float, xyz.split()))),
+            angles=np.array(list(map(float, rpy.split()))),
+        )
+
     def _write_origin(self, xml_parent, origin):
         if origin is None:
             return
 
         etree.SubElement(
             xml_parent,
-            'origin',
+            "origin",
             attrib={
-                'xyz': ' '.join(map(str, tra.translation_from_matrix(origin))),
-                'rpy': ' '.join(map(str, tra.euler_from_matrix(origin))),
-            }
+                "xyz": " ".join(map(str, tra.translation_from_matrix(origin))),
+                "rpy": " ".join(map(str, tra.euler_from_matrix(origin))),
+            },
         )
 
     def _parse_color(xml_element):
         if xml_element is None:
             return None
 
-        rgba = xml_element.get('rgba', default='1 1 1 1')
+        rgba = xml_element.get("rgba", default="1 1 1 1")
 
         return Color(rgba=np.array(list(map(float, rgba.split()))))
 
     def _write_color(self, xml_parent, color):
         if color is None:
             return
-        
+
         etree.SubElement(
-            xml_parent,
-            'color',
-            attrib={
-                'rgba': ' '.join(map(str, color.rgba))
-            }
+            xml_parent, "color", attrib={"rgba": " ".join(map(str, color.rgba))}
         )
 
     def _parse_texture(xml_element):
         if xml_element is None:
             return None
 
-        return Texture(filename=xml_element.get('filename', default=None))
-    
+        return Texture(filename=xml_element.get("filename", default=None))
+
     def _write_texture(self, xml_parent, texture):
         if texture is None:
             return
-        
-        etree.SubElement(
-            xml_parent,
-            'texture',
-            attrib={
-                'filename': texture.filename
-            }
-        )
-    
+
+        etree.SubElement(xml_parent, "texture", attrib={"filename": texture.filename})
+
     def _parse_material(xml_element):
         if xml_element is None:
             return None
-        
+
         material = Material()
-        material.color = URDF._parse_color(xml_element.find('color'))
-        material.texture = URDF._parse_texture(xml_element.find('texture'))
+        material.color = URDF._parse_color(xml_element.find("color"))
+        material.texture = URDF._parse_texture(xml_element.find("texture"))
 
         return material
 
     def _write_material(self, xml_parent, material):
         if material is None:
             return
-        
-        xml_element = etree.SubElement(xml_parent, 'material')
+
+        xml_element = etree.SubElement(xml_parent, "material")
 
         self._write_color(xml_element, material.color)
         self._write_texture(xml_element, material.texture)
-    
-    def _parse_visual(xml_element):
-        visual = Visual(name=xml_element.get('name'))
 
-        visual.geometry = URDF._parse_geometry(xml_element.find('geometry'))
-        visual.origin = URDF._parse_origin(xml_element.find('origin'))
-        visual.material = URDF._parse_material(xml_element.find('material'))
+    def _parse_visual(xml_element):
+        visual = Visual(name=xml_element.get("name"))
+
+        visual.geometry = URDF._parse_geometry(xml_element.find("geometry"))
+        visual.origin = URDF._parse_origin(xml_element.find("origin"))
+        visual.material = URDF._parse_material(xml_element.find("material"))
 
         return visual
 
     def _write_visual(self, xml_parent, visual):
-        xml_element = etree.SubElement(xml_parent, 'visual')
+        xml_element = etree.SubElement(xml_parent, "visual")
 
         self._write_geometry(xml_element, visual.geometry)
         self._write_origin(xml_element, visual.origin)
         self._write_material(xml_element, visual.material)
 
     def _parse_collision(xml_element):
-        collision = Collision(name=xml_element.get('name'))
+        collision = Collision(name=xml_element.get("name"))
 
-        collision.geometry = URDF._parse_geometry(xml_element.find('geometry'))
-        collision.origin = URDF._parse_origin(xml_element.find('origin'))
+        collision.geometry = URDF._parse_geometry(xml_element.find("geometry"))
+        collision.origin = URDF._parse_origin(xml_element.find("origin"))
 
         return collision
-    
+
     def _write_collision(self, xml_parent, collision):
-        xml_element = etree.SubElement(xml_parent, 'collision')
+        xml_element = etree.SubElement(xml_parent, "collision")
 
         self._write_geometry(xml_element, collision.geometry)
         self._write_origin(xml_element, collision.origin)
@@ -464,80 +490,94 @@ class URDF:
     def _parse_inertia(xml_element):
         if xml_element is None:
             return None
-        
+
         x = xml_element
 
-        return np.array([
-            [x.get('ixx', default=1.0), x.get('ixy', default=0.0), x.get('ixz', default=0.0)],
-            [x.get('ixy', default=0.0), x.get('iyy', default=1.0), x.get('iyz', default=0.0)],
-            [x.get('ixz', default=0.0), x.get('iyz', default=0.0), x.get('izz', default=1.0)],
-        ])
-    
+        return np.array(
+            [
+                [
+                    x.get("ixx", default=1.0),
+                    x.get("ixy", default=0.0),
+                    x.get("ixz", default=0.0),
+                ],
+                [
+                    x.get("ixy", default=0.0),
+                    x.get("iyy", default=1.0),
+                    x.get("iyz", default=0.0),
+                ],
+                [
+                    x.get("ixz", default=0.0),
+                    x.get("iyz", default=0.0),
+                    x.get("izz", default=1.0),
+                ],
+            ]
+        )
+
     def _write_inertia(self, xml_parent, inertia):
         if inertia is None:
             return None
 
         etree.SubElement(
             xml_parent,
-            'inertia',
+            "inertia",
             attrib={
-                'ixx': str(inertia[0, 0]),
-                'ixy': str(inertia[0, 1]),
-                'ixz': str(inertia[0, 2]),
-                'iyy': str(inertia[1, 1]),
-                'iyz': str(inertia[1, 2]),
-                'izz': str(inertia[2, 2]),
-            }
+                "ixx": str(inertia[0, 0]),
+                "ixy": str(inertia[0, 1]),
+                "ixz": str(inertia[0, 2]),
+                "iyy": str(inertia[1, 1]),
+                "iyz": str(inertia[1, 2]),
+                "izz": str(inertia[2, 2]),
+            },
         )
 
     def _parse_mass(xml_element):
         if xml_element is None:
             return None
-        
-        return xml_element.get('value', default=1.0)
-    
+
+        return xml_element.get("value", default=1.0)
+
     def _write_mass(self, xml_parent, mass):
         if mass is None:
             return
-        
+
         etree.SubElement(
             xml_parent,
-            'mass',
+            "mass",
             attrib={
-                'value': str(mass),
-            }
+                "value": str(mass),
+            },
         )
-    
+
     def _parse_inertial(xml_element):
         if xml_element is None:
             return None
 
         inertial = Inertial()
-        inertial.origin = URDF._parse_origin(xml_element.find('origin'))
-        inertial.inertia = URDF._parse_inertia(xml_element.find('inertia'))
-        inertial.mass = URDF._parse_mass(xml_element.find('mass'))
-        
+        inertial.origin = URDF._parse_origin(xml_element.find("origin"))
+        inertial.inertia = URDF._parse_inertia(xml_element.find("inertia"))
+        inertial.mass = URDF._parse_mass(xml_element.find("mass"))
+
         return inertial
-    
+
     def _write_inertial(self, xml_parent, inertial):
         if inertial is None:
             return
-        
-        xml_element = etree.SubElement(xml_parent, 'inertial')
+
+        xml_element = etree.SubElement(xml_parent, "inertial")
 
         self._write_origin(xml_element, inertial.origin)
         self._write_mass(xml_element, inertial.mass)
         self._write_inertia(xml_element, inertial.inertia)
-    
+
     def _parse_link(xml_element):
-        link = Link(name=xml_element.attrib['name'])
+        link = Link(name=xml_element.attrib["name"])
 
-        link.inertial = URDF._parse_inertial(xml_element.find('inertial'))
+        link.inertial = URDF._parse_inertial(xml_element.find("inertial"))
 
-        for v in xml_element.findall('visual'):
+        for v in xml_element.findall("visual"):
             link.visuals.append(URDF._parse_visual(v))
 
-        for c in xml_element.findall('collision'):
+        for c in xml_element.findall("collision"):
             link.collisions.append(URDF._parse_collision(c))
 
         return link
@@ -545,9 +585,9 @@ class URDF:
     def _write_link(self, xml_parent, link):
         xml_element = etree.SubElement(
             xml_parent,
-            'link',
+            "link",
             attrib={
-                'name': link.name,
+                "name": link.name,
             },
         )
 
@@ -556,63 +596,59 @@ class URDF:
             self._write_visual(xml_element, visual)
         for collision in link.collisions:
             self._write_collision(xml_element, collision)
-    
+
     def _parse_axis(xml_element):
         if xml_element is None:
             return np.array([1.0, 0, 0])
-        
-        xyz = xml_element.get('xyz', '1 0 0')
+
+        xyz = xml_element.get("xyz", "1 0 0")
         return np.array(list(map(float, xyz.split())))
-    
+
     def _write_axis(self, xml_parent, axis):
         if axis is None:
             return
 
-        etree.SubElement(
-            xml_parent,
-            'axis',
-            attrib = {'xyz': ' '.join(map(str, axis))}
-        )
+        etree.SubElement(xml_parent, "axis", attrib={"xyz": " ".join(map(str, axis))})
 
     def _parse_limit(xml_element):
         if xml_element is None:
             return None
-        
+
         limit = Limit()
-        limit.effort = _str2float(xml_element.get('effort', default=None))
-        limit.velocity = _str2float(xml_element.get('velocity', default=None))
-        limit.lower = _str2float(xml_element.get('lower', default=None))
-        limit.upper = _str2float(xml_element.get('upper', default=None))
+        limit.effort = _str2float(xml_element.get("effort", default=None))
+        limit.velocity = _str2float(xml_element.get("velocity", default=None))
+        limit.lower = _str2float(xml_element.get("lower", default=None))
+        limit.upper = _str2float(xml_element.get("upper", default=None))
 
         return limit
-    
+
     def _write_limit(self, xml_parent, limit):
         if limit is None:
             return
 
         attrib = {}
         if limit.effort is not None:
-            attrib['effort'] = str(limit.effort)
+            attrib["effort"] = str(limit.effort)
         if limit.velocity is not None:
-            attrib['velocity'] = str(limit.velocity)
+            attrib["velocity"] = str(limit.velocity)
         if limit.lower is not None:
-            attrib['lower'] = str(limit.lower)
+            attrib["lower"] = str(limit.lower)
         if limit.upper is not None:
-            attrib['upper'] = str(limit.upper)
-        
+            attrib["upper"] = str(limit.upper)
+
         etree.SubElement(
             xml_parent,
-            'limit',
+            "limit",
             attrib=attrib,
         )
-    
+
     def _parse_dynamics(xml_element):
         if xml_element is None:
             return None
-        
+
         dynamics = Dynamics()
-        dynamics.damping = xml_element.get('damping', default=None)
-        dynamics.friction = xml_element.get('friction', default=None)
+        dynamics.damping = xml_element.get("damping", default=None)
+        dynamics.friction = xml_element.get("friction", default=None)
 
         return dynamics
 
@@ -622,71 +658,64 @@ class URDF:
 
         attrib = {}
         if dynamics.damping is not None:
-            attrib['damping'] = str(dynamics.damping)
+            attrib["damping"] = str(dynamics.damping)
         if dynamics.friction is not None:
-            attrib['friction'] = str(dynamics.friction)
-        
+            attrib["friction"] = str(dynamics.friction)
+
         etree.SubElement(
             xml_parent,
-            'dynamics',
+            "dynamics",
             attrib=attrib,
         )
-    
+
     def _parse_joint(xml_element):
-        joint = Joint(name=xml_element.attrib['name'])
-        
-        joint.type = xml_element.get('type', default=None)
-        joint.parent = xml_element.find('parent').get('link')
-        joint.child = xml_element.find('child').get('link')
-        joint.origin = URDF._parse_origin(xml_element.find('origin'))
-        joint.axis = URDF._parse_axis(xml_element.find('axis'))
-        joint.limit = URDF._parse_limit(xml_element.find('limit'))
-        joint.dynamics = URDF._parse_dynamics(xml_element.find('dynamics'))
+        joint = Joint(name=xml_element.attrib["name"])
+
+        joint.type = xml_element.get("type", default=None)
+        joint.parent = xml_element.find("parent").get("link")
+        joint.child = xml_element.find("child").get("link")
+        joint.origin = URDF._parse_origin(xml_element.find("origin"))
+        joint.axis = URDF._parse_axis(xml_element.find("axis"))
+        joint.limit = URDF._parse_limit(xml_element.find("limit"))
+        joint.dynamics = URDF._parse_dynamics(xml_element.find("dynamics"))
 
         return joint
 
     def _write_joint(self, xml_parent, joint):
         xml_element = etree.SubElement(
             xml_parent,
-            'joint',
+            "joint",
             attrib={
-                'name': joint.name,
-                'type': joint.type,
-            }
+                "name": joint.name,
+                "type": joint.type,
+            },
         )
 
-        etree.SubElement(
-            xml_element,
-            'parent',
-            attrib={'link': joint.parent}
-        )
-        etree.SubElement(
-            xml_element,
-            'child',
-            attrib={'link': joint.child}
-        )
+        etree.SubElement(xml_element, "parent", attrib={"link": joint.parent})
+        etree.SubElement(xml_element, "child", attrib={"link": joint.child})
         self._write_origin(xml_element, joint.origin)
         self._write_axis(xml_element, joint.axis)
         self._write_limit(xml_element, joint.limit)
         self._write_dynamics(xml_element, joint.dynamics)
 
     def _parse_robot(xml_element):
-        robot = Robot(name=xml_element.attrib['name'])
+        robot = Robot(name=xml_element.attrib["name"])
 
-        for l in xml_element.findall('link'):
+        for l in xml_element.findall("link"):
             robot.links.append(URDF._parse_link(l))
-        for j in xml_element.findall('joint'):
+        for j in xml_element.findall("joint"):
             robot.joints.append(URDF._parse_joint(j))
-        
+
         return robot
-    
+
     def _validate_robot(self, robot):
         if robot is not None:
             if robot.name is None:
                 raise URDFIncompleteError(f"The <robot> tag misses a 'name' attribute.")
             elif len(robot.name) == 0:
-                raise URDFIncompleteError(f"The <robot> tag has an empty 'name' attribute.")
-
+                raise URDFIncompleteError(
+                    f"The <robot> tag has an empty 'name' attribute."
+                )
 
     def handleError(self, error):
         self.errors.append(error)
@@ -699,18 +728,14 @@ class URDF:
         exceptions and continue loading whatever it can. If you want to empty the
         mask so all exceptions abort the load just call c.ignoreErrors(None).
         """
-        if args == [ None ]:
+        if args == [None]:
             self.maskedErrors = []
         else:
-            for e in args: self.maskedErrors.append(e)
-    
+            for e in args:
+                self.maskedErrors.append(e)
+
     def _write_robot(self, robot):
-        xml_element = etree.Element(
-            'robot',
-            attrib={
-                'name': robot.name
-            }
-        )
+        xml_element = etree.Element("robot", attrib={"name": robot.name})
         for link in robot.links:
             self._write_link(xml_element, link)
         for joint in robot.joints:
@@ -724,48 +749,55 @@ class URDF:
 
         root = tree.getroot()
 
-        if not 'mesh_dir' in kwargs:
-            kwargs['mesh_dir'] = os.path.dirname(fname)
-        
+        if not "mesh_dir" in kwargs:
+            kwargs["mesh_dir"] = os.path.dirname(fname)
+
         return URDF(xml_root=root, **kwargs)
 
     def contains(self, key, value, element=None):
         if element is None:
             element = self.robot
-        
+
         result = False
         for field in element.__dataclass_fields__:
             field_value = getattr(element, field)
             if is_dataclass(field_value):
-                result = result or self.contains(key=key, value=value, element=field_value)
-            elif isinstance(field_value, list) and len(field_value) > 0 and is_dataclass(field_value[0]):
+                result = result or self.contains(
+                    key=key, value=value, element=field_value
+                )
+            elif (
+                isinstance(field_value, list)
+                and len(field_value) > 0
+                and is_dataclass(field_value[0])
+            ):
                 for field_value_element in field_value:
-                    result = result or self.contains(key=key, value=value, element=field_value_element)
+                    result = result or self.contains(
+                        key=key, value=value, element=field_value_element
+                    )
             else:
                 if key == field and value == field_value:
                     result = True
         return result
-
 
     def _determine_base_link(self):
         link_names = [l.name for l in self.robot.links]
 
         for j in self.robot.joints:
             link_names.remove(j.child)
-        
+
         if len(link_names) == 0:
             # raise Error?
             return None
-        
+
         return random.choice(link_names)
 
     def _forward_kinematics_joint(self, joint, q=0.0):
         origin = np.eye(4) if joint.origin is None else joint.origin
-        
-        if joint.type == 'revolute':
+
+        if joint.type == "revolute":
             matrix = origin @ tra.rotation_matrix(q, joint.axis)
-        elif joint.type == 'prismatic':
-            matrix = origin @ tra.translation_matrix(q*joint.axis)
+        elif joint.type == "prismatic":
+            matrix = origin @ tra.translation_matrix(q * joint.axis)
         else:
             matrix = origin
 
@@ -774,12 +806,16 @@ class URDF:
     def update_trimesh_scene(self, trimesh_scene, configuration):
         # TODO: keep track of non-actuated joints
         if len(configuration) != len(self.robot.joints):
-            raise ValueError(f"Dimensionality of configuration ({len(configuration)}) doesn't match number of actuated joints ({len(self.robot.joints)}).")
-        
+            raise ValueError(
+                f"Dimensionality of configuration ({len(configuration)}) doesn't match number of actuated joints ({len(self.robot.joints)})."
+            )
+
         for j, q in zip(self.robot.joints, configuration):
             matrix = self._forward_kinematics_joint(j, q=q)
-            
-            trimesh_scene.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
+
+            trimesh_scene.graph.update(
+                frame_from=j.parent, frame_to=j.child, matrix=matrix
+            )
 
     def _add_visual_to_scene(self, s, v, link_name, load_geometry=True):
         origin = v.origin if v.origin is not None else np.eye(4)
@@ -788,36 +824,53 @@ class URDF:
             new_s = None
 
             if v.geometry.box is not None:
-                new_s = trimesh.Scene([trimesh.creation.box(extents=v.geometry.box.size)])
+                new_s = trimesh.Scene(
+                    [trimesh.creation.box(extents=v.geometry.box.size)]
+                )
             elif v.geometry.sphere is not None:
-                new_s = trimesh.Scene([trimesh.creation.uv_sphere(radius=v.geometry.sphere.radius)])
+                new_s = trimesh.Scene(
+                    [trimesh.creation.uv_sphere(radius=v.geometry.sphere.radius)]
+                )
             elif v.geometry.cylinder is not None:
-                new_s = trimesh.Scene([trimesh.creation.cylinder(radius=v.geometry.cylinder.radius, height=v.geometry.cylinder.length)])
+                new_s = trimesh.Scene(
+                    [
+                        trimesh.creation.cylinder(
+                            radius=v.geometry.cylinder.radius,
+                            height=v.geometry.cylinder.length,
+                        )
+                    ]
+                )
             elif v.geometry.mesh is not None and load_geometry:
                 new_filename = self._filename_handler(fname=v.geometry.mesh.filename)
 
                 if os.path.isfile(new_filename):
-                    print(f'Loading {v.geometry.mesh.filename} as {new_filename}')
+                    print(f"Loading {v.geometry.mesh.filename} as {new_filename}")
                     # try:
                     # os.path.join(self.mesh_dir, v.geometry.mesh.filename)
-                    new_s = trimesh.load(new_filename, force='scene')
+                    new_s = trimesh.load(new_filename, force="scene")
 
                     # scale mesh appropriately
                     if v.geometry.mesh.scale is not None:
                         if isinstance(v.geometry.mesh.scale, float):
                             new_s = new_s.scaled(v.geometry.mesh.scale)
                         elif isinstance(v.geometry.mesh.scale, np.ndarray):
-                            if not np.all(v.geometry.mesh.scale == v.geometry.mesh.scale[0]):
-                                print(f"Warning: Can't scale axis independently, will use the first entry of '{v.geometry.mesh.scale}'")
+                            if not np.all(
+                                v.geometry.mesh.scale == v.geometry.mesh.scale[0]
+                            ):
+                                print(
+                                    f"Warning: Can't scale axis independently, will use the first entry of '{v.geometry.mesh.scale}'"
+                                )
                             new_s = new_s.scaled(v.geometry.mesh.scale[0])
                         else:
-                            print(f"Warning: Can't interpret scale '{v.geometry.mesh.scale}'")
+                            print(
+                                f"Warning: Can't interpret scale '{v.geometry.mesh.scale}'"
+                            )
                     # except Exception as e:
                     #     print(e)
                     #     pass
                 else:
                     print(f"Can't find {new_filename}")
-            
+
             if new_s is not None:
                 for name, geom in new_s.geometry.items():
                     s.add_geometry(
@@ -829,29 +882,33 @@ class URDF:
     def get_default_configuration(self):
         config = []
         for j in self.robot.joints:
-            if j.type == 'revolute' or j.type == 'prismatic':
+            if j.type == "revolute" or j.type == "prismatic":
                 if j.limit is not None:
                     config.append(j.limit.lower + 0.5 * (j.limit.upper - j.limit.lower))
                 else:
                     config.append(0.0)
-            elif j.type == 'continuous' or j.type == 'fixed':
+            elif j.type == "continuous" or j.type == "fixed":
                 config.append(0.0)
-            elif j.type == 'floating':
+            elif j.type == "floating":
                 config.append([0.0] * 6)
-            elif j.type == 'planar':
+            elif j.type == "planar":
                 config.append([0.0] * 2)
 
         return np.array(config)
-    
-    def _create_scene(self, configuration=None, use_collision_geometry=False, load_geometry=True):
+
+    def _create_scene(
+        self, configuration=None, use_collision_geometry=False, load_geometry=True
+    ):
         s = trimesh.scene.Scene(base_frame=self._determine_base_link())
 
-        configuration = self.get_default_configuration() if configuration is None else configuration
-        assert(len(configuration) == len(self.robot.joints))
+        configuration = (
+            self.get_default_configuration() if configuration is None else configuration
+        )
+        assert len(configuration) == len(self.robot.joints)
 
         for j, q in zip(self.robot.joints, configuration):
             matrix = self._forward_kinematics_joint(j, q=q)
-            
+
             s.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
 
         for l in self.robot.links:
@@ -859,8 +916,10 @@ class URDF:
 
             meshes = l.collisions if use_collision_geometry else l.visuals
             for m in meshes:
-                self._add_visual_to_scene(s, m, link_name=l.name, load_geometry=load_geometry)
-        
+                self._add_visual_to_scene(
+                    s, m, link_name=l.name, load_geometry=load_geometry
+                )
+
         return s
 
     def _successors(self, node):
@@ -888,20 +947,23 @@ class URDF:
         if len(subnodes) > 0:
             for node in subnodes:
                 if node in self.link_map:
-                    subrobot.links.append(
-                        copy.deepcopy(self.link_map[node])
-                    )
+                    subrobot.links.append(copy.deepcopy(self.link_map[node]))
             for joint_name, joint in self.joint_map.items():
                 if joint.parent in subnodes and joint.child in subnodes:
-                    subrobot.joints.append(
-                        copy.deepcopy(self.joint_map[joint_name])
-                    )
-        
+                    subrobot.joints.append(copy.deepcopy(self.joint_map[joint_name]))
+
         return subrobot
-        
+
     def split_along_joints(self, joint_type="floating"):
         result = [
-            (np.eye(4), URDF(robot=copy.deepcopy(self.robot), load_meshes=False, generate_scene_graph=False))
+            (
+                np.eye(4),
+                URDF(
+                    robot=copy.deepcopy(self.robot),
+                    load_meshes=False,
+                    generate_scene_graph=False,
+                ),
+            )
         ]
 
         # find all freejoints
@@ -916,7 +978,9 @@ class URDF:
             result.append(
                 (
                     self._scene.graph.get(root_link.name)[0],
-                    URDF(robot=new_robot, load_meshes=False, generate_scene_graph=False),
+                    URDF(
+                        robot=new_robot, load_meshes=False, generate_scene_graph=False
+                    ),
                 )
             )
 
@@ -925,12 +989,16 @@ class URDF:
                 result[0][-1].robot.joints.remove(result[0][-1].joint_map[j.name])
             for l in new_robot.links:
                 result[0][-1].robot.links.remove(result[0][-1].link_map[l.name])
-        
-        return result            
+
+        return result
 
     def validate_filenames(self):
         for l in self.robot.links:
-            meshes = [m.geometry.mesh for m in l.collisions + l.visuals if m.geometry.mesh is not None]
+            meshes = [
+                m.geometry.mesh
+                for m in l.collisions + l.visuals
+                if m.geometry.mesh is not None
+            ]
             for m in meshes:
                 _logger.debug(m.filename, "-->", self._filename_handler(m.filename))
                 if not os.path.isfile(self._filename_handler(m.filename)):
@@ -948,6 +1016,3 @@ class URDF:
     def write_xml_file(self, fname):
         xml_element = self.write_xml()
         xml_element.write(fname, xml_declaration=True, pretty_print=True)
-
-        
-        
