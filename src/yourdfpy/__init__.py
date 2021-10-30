@@ -200,20 +200,86 @@ def _str2float(s):
     return float(s) if s is not None else None
 
 
+def filename_handler_null(fname):
+    """A lazy filename handler that simply returns its input.
+
+    Args:
+        fname (str): A file name.
+
+    Returns:
+        str: Same file name.
+    """
+    return fname
+
+
 def filename_handler_ignore_directive(fname):
+    """A filename handler that removes anything before (and including) '://'.
+
+    Args:
+        fname (str): A file name.
+
+    Returns:
+        str: The file name without the prefix.
+    """
     return fname.split(f":{os.path.sep}{os.path.sep}")[-1]
 
 
 def filename_handler_ignore_directive_package(fname):
+    """A filename handler that removes the 'package://' directive and the package it refers to.
+
+    Args:
+        fname (str): A file name.
+
+    Returns:
+        str: The file name without 'package://' and the package name.
+    """
     if fname.startswith("package:"):
-        return os.path.sep.join(
+        return os.path.join(
             fname.split(f":{os.path.sep}{os.path.sep}")[-1].split(os.path.sep)[1:]
         )
     return filename_handler_ignore_directive(fname)
 
 
-def filename_handler_relative(fname, mesh_dir):
-    return os.path.join(mesh_dir, filename_handler_ignore_directive_package(fname))
+def filename_handler_add_prefix(fname, prefix):
+    """A filename handler that adds a prefix.
+
+    Args:
+        fname (str): A file name.
+        prefix (str): A prefix.
+
+    Returns:
+        str: Prefix plus file name.
+    """
+    return prefix + fname
+
+
+def filename_handler_absolute2relative(fname, dir):
+    """A filename handler that turns an absolute file name into a relative one.
+
+    Args:
+        fname (str): A file name.
+        dir (str): A directory.
+
+    Returns:
+        str: The file name relative to the directory.
+    """
+    # TODO: that's not right
+    if fname.startswith(dir):
+        return fname[len(dir) :]
+    return fname
+
+
+def filename_handler_relative(fname, dir):
+    """A filename handler that joins a file name with a directory.
+
+    Args:
+        fname (str): A file name.
+        dir (str): A directory.
+
+    Returns:
+        str: The directory joined with the file name.
+    """
+    return os.path.join(dir, filename_handler_ignore_directive_package(fname))
 
 
 def filename_handler_relative_to_urdf_file(fname, urdf_fname):
@@ -222,13 +288,49 @@ def filename_handler_relative_to_urdf_file(fname, urdf_fname):
     )
 
 
-def filename_handler_magic(fname, mesh_dir):
-    for fn in [partial(filename_handler_relative, mesh_dir=mesh_dir)]:
+def filename_handler_meta(fname, filename_handlers):
+    """A filename handler that calls other filename handlers until the resulting file name points to an existing file.
+
+    Args:
+        fname (str): A file name.
+        filename_handlers (list(fn)): A list of function pointers to filename handlers.
+
+    Returns:
+        str: The resolved file name that points to an existing file or the input if none of the files exists.
+    """
+    for fn in filename_handlers:
         candidate_fname = fn(fname=fname)
         if os.path.isfile(candidate_fname):
             return candidate_fname
-    print(f"Unable to resolve filename: {fname}")
+    _logger.warn(f"Unable to resolve filename: {fname}")
     return fname
+
+
+def filename_handler_magic(fname, dir):
+    """A filename handler that checks if the file name is a relative filename.
+
+    Args:
+        fname (str): A file name.
+        dir (str): A directory.
+
+    Returns:
+        str: The file name that exists or the input if nothing is found.
+    """
+    return filename_handler_meta(
+        fname=fname, filename_handlers=[partial(filename_handler_relative, dir=dir)]
+    )
+
+
+def validation_handler_strict(errors):
+    """A validation handler that does not allow any errors.
+
+    Args:
+        errors (list[yourdfpy.URDFError]): List of errors.
+
+    Returns:
+        bool: Whether any errors were found.
+    """
+    return len(errors) == 0
 
 
 class URDF:
@@ -244,7 +346,7 @@ class URDF:
         assert bool(xml_root is None) ^ bool(robot is None)
 
         if filename_handler is None:
-            self._filename_handler = partial(filename_handler_magic, mesh_dir=mesh_dir)
+            self._filename_handler = partial(filename_handler_magic, dir=mesh_dir)
         else:
             self._filename_handler = filename_handler
 
@@ -347,7 +449,8 @@ class URDF:
         )
 
     def _write_mesh(self, xml_parent, mesh):
-        attrib = {"filename": mesh.filename}
+        # TODO: turn into different filename handler
+        attrib = {"filename": self._filename_handler(mesh.filename)}
         if mesh.scale is not None:
             if isinstance(mesh.scale, float) or isinstance(mesh.scale, int):
                 attrib["scale"] = " ".join([str(mesh.scale)] * 3)
@@ -430,12 +533,14 @@ class URDF:
         if xml_element is None:
             return None
 
+        # TODO: use texture filename handler
         return Texture(filename=xml_element.get("filename", default=None))
 
     def _write_texture(self, xml_parent, texture):
         if texture is None:
             return
 
+        # TODO: use texture filename handler
         etree.SubElement(xml_parent, "texture", attrib={"filename": texture.filename})
 
     def _parse_material(xml_element):
@@ -705,34 +810,29 @@ class URDF:
             robot.links.append(URDF._parse_link(l))
         for j in xml_element.findall("joint"):
             robot.joints.append(URDF._parse_joint(j))
-
         return robot
 
     def _validate_robot(self, robot):
         if robot is not None:
             if robot.name is None:
-                raise URDFIncompleteError(f"The <robot> tag misses a 'name' attribute.")
+                self.errors.append(
+                    URDFIncompleteError(f"The <robot> tag misses a 'name' attribute.")
+                )
             elif len(robot.name) == 0:
-                raise URDFIncompleteError(
-                    f"The <robot> tag has an empty 'name' attribute."
+                self.errors.append(
+                    URDFIncompleteError(
+                        f"The <robot> tag has an empty 'name' attribute."
+                    )
                 )
 
-    def handleError(self, error):
-        self.errors.append(error)
-        if not type(error) in self.maskedErrors:
-            raise
+    def validate(self, validation_fn=None):
+        self.errors = []
+        self._validate_robot(self.robot)
 
-    def ignoreErrors(self, *args):
-        """Add exceptions to the mask for ignoring or clear the mask if None given.
-        You call c.ignoreErrors(e1, e2, ... ) if you want the loader to ignore those
-        exceptions and continue loading whatever it can. If you want to empty the
-        mask so all exceptions abort the load just call c.ignoreErrors(None).
-        """
-        if args == [None]:
-            self.maskedErrors = []
-        else:
-            for e in args:
-                self.maskedErrors.append(e)
+        if validation_fn is None:
+            validation_fn = validation_strict
+
+        return validation_fn(self.errors)
 
     def _write_robot(self, robot):
         xml_element = etree.Element("robot", attrib={"name": robot.name})
