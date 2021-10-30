@@ -16,6 +16,7 @@ finally:
     del version, PackageNotFoundError
 
 import os
+import six
 import copy
 import random
 import logging
@@ -234,7 +235,7 @@ def filename_handler_ignore_directive_package(fname):
         str: The file name without 'package://' and the package name.
     """
     if fname.startswith("package:"):
-        return os.path.join(
+        return os.path.sep.join(
             fname.split(f":{os.path.sep}{os.path.sep}")[-1].split(os.path.sep)[1:]
         )
     return filename_handler_ignore_directive(fname)
@@ -336,26 +337,18 @@ def validation_handler_strict(errors):
 class URDF:
     def __init__(
         self,
-        xml_root=None,
-        robot=None,
+        robot,
         generate_scene_graph=True,
         load_meshes=True,
         filename_handler=None,
         mesh_dir="",
     ):
-        assert bool(xml_root is None) ^ bool(robot is None)
-
         if filename_handler is None:
             self._filename_handler = partial(filename_handler_magic, dir=mesh_dir)
         else:
             self._filename_handler = filename_handler
 
-        if xml_root is None:
-            self.robot = robot
-        else:
-            self._xml_root = xml_root
-            self.robot = URDF._parse_robot(xml_root)
-
+        self.robot = robot
         self._create_maps()
 
         self.num_actuated_joints = len(
@@ -363,7 +356,6 @@ class URDF:
         )
 
         self.errors = []
-        self.maskedErrors = []
 
         if generate_scene_graph:
             self._scene = self._create_scene(load_geometry=load_meshes)
@@ -803,6 +795,7 @@ class URDF:
         self._write_limit(xml_element, joint.limit)
         self._write_dynamics(xml_element, joint.dynamics)
 
+    @staticmethod
     def _parse_robot(xml_element):
         robot = Robot(name=xml_element.attrib["name"])
 
@@ -843,16 +836,20 @@ class URDF:
 
         return xml_element
 
-    def from_xml_file(fname, **kwargs):
+    @staticmethod
+    def load(fname_or_file, **kwargs):
+        if isinstance(fname_or_file, six.string_types):
+            if not os.path.isfile(fname_or_file):
+                raise ValueError("{} is not a file".format(fname_or_file))
+
+            if not "mesh_dir" in kwargs:
+                kwargs["mesh_dir"] = os.path.dirname(fname_or_file)
+
         parser = etree.XMLParser(remove_blank_text=True)
-        tree = etree.parse(fname, parser)
+        tree = etree.parse(fname_or_file, parser)
+        xml_root = tree.getroot()
 
-        root = tree.getroot()
-
-        if not "mesh_dir" in kwargs:
-            kwargs["mesh_dir"] = os.path.dirname(fname)
-
-        return URDF(xml_root=root, **kwargs)
+        return URDF(robot=URDF._parse_robot(xml_element=xml_root), **kwargs)
 
     def contains(self, key, value, element=None):
         if element is None:
