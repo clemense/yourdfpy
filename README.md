@@ -22,7 +22,9 @@ git tag -l
 rm dist/*
 rm -rf build/
 
+git gui # commit something?
 git tag v<semver>
+git push origin main
 python setup.py bdist_wheel
 twine upload -r testpypi dist/*
 
