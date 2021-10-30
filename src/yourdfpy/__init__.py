@@ -830,7 +830,7 @@ class URDF:
         self._validate_robot(self.robot)
 
         if validation_fn is None:
-            validation_fn = validation_strict
+            validation_fn = validation_handler_strict
 
         return validation_fn(self.errors)
 
