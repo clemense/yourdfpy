@@ -24,6 +24,7 @@ git tag -l
 rm dist/*
 rm -rf build/
 
+# https://pyscaffold.org/en/latest/faq.html#version-faq
 git gui # commit something?
 git tag v<semver>
 git push origin main

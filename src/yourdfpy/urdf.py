@@ -889,8 +889,8 @@ class URDF:
 
         return Mimic(
             joint=xml_element.get("joint"),
-            multiplier=_str2float(xml_element.get("multiplier")),
-            offset=_str2float(xml_element.get("offset")),
+            multiplier=_str2float(xml_element.get("multiplier", 1.0)),
+            offset=_str2float(xml_element.get("offset", 0.0)),
         )
 
     def _write_mimic(self, xml_parent, mimic):
