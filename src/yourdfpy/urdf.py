@@ -312,9 +312,26 @@ def filename_handler_relative(fname, dir):
 
 
 def filename_handler_relative_to_urdf_file(fname, urdf_fname):
-    return os.path.join(
-        os.path.dirname(urdf_fname), filename_handler_ignore_directive(fname)
+    return filename_handler_relative(fname, os.path.dirname(urdf_fname))
+
+
+def filename_handler_relative_to_urdf_file_recursive(fname, urdf_fname, level=0):
+    if level == 0:
+        return filename_handler_relative_to_urdf_file(fname, urdf_fname)
+    return filename_handler_relative_to_urdf_file_recursive(
+        fname, os.path.split(urdf_fname)[0], level=level - 1
     )
+
+
+def _create_filename_handlers_to_urdf_file_recursive(urdf_fname):
+    return [
+        partial(
+            filename_handler_relative_to_urdf_file_recursive,
+            urdf_fname=urdf_fname,
+            level=i,
+        )
+        for i in range(len(os.path.normpath(urdf_fname).split(os.path.sep)))
+    ]
 
 
 def filename_handler_meta(fname, filename_handlers):
@@ -329,6 +346,7 @@ def filename_handler_meta(fname, filename_handlers):
     """
     for fn in filename_handlers:
         candidate_fname = fn(fname=fname)
+        _logger.debug(f"Checking filename: {candidate_fname}")
         if os.path.isfile(candidate_fname):
             return candidate_fname
     _logger.warn(f"Unable to resolve filename: {fname}")
@@ -336,7 +354,7 @@ def filename_handler_meta(fname, filename_handlers):
 
 
 def filename_handler_magic(fname, dir):
-    """A filename handler that checks if the file name is a relative filename.
+    """A magic filename handler.
 
     Args:
         fname (str): A file name.
@@ -346,7 +364,9 @@ def filename_handler_magic(fname, dir):
         str: The file name that exists or the input if nothing is found.
     """
     return filename_handler_meta(
-        fname=fname, filename_handlers=[partial(filename_handler_relative, dir=dir)]
+        fname=fname,
+        filename_handlers=[partial(filename_handler_relative, dir=dir)]
+        + _create_filename_handlers_to_urdf_file_recursive(urdf_fname=dir),
     )
 
 
