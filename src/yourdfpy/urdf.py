@@ -11,7 +11,6 @@ from functools import partial
 import trimesh
 import trimesh.transformations as tra
 
-# import xml.etree.ElementTree as ET
 from lxml import etree
 
 _logger = logging.getLogger(__name__)
