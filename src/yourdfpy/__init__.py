@@ -632,6 +632,13 @@ class URDF:
                 return np.array(list(map(float, s)))
         return None
 
+    def _write_scale(self, xml_parent, scale):
+        if scale is not None:
+            if isinstance(scale, float) or isinstance(scale, int):
+                xml_parent.set("scale", " ".join([str(scale)] * 3))
+            else:
+                xml_parent.set("scale", " ".join(map(str, scale)))
+
     def _parse_mesh(xml_element):
         return Mesh(
             filename=xml_element.get("filename"), scale=URDF._parse_scale(xml_element)
@@ -639,14 +646,13 @@ class URDF:
 
     def _write_mesh(self, xml_parent, mesh):
         # TODO: turn into different filename handler
-        attrib = {"filename": self._filename_handler(mesh.filename)}
-        if mesh.scale is not None:
-            if isinstance(mesh.scale, float) or isinstance(mesh.scale, int):
-                attrib["scale"] = " ".join([str(mesh.scale)] * 3)
-            else:
-                attrib["scale"] = " ".join(map(str, mesh.scale))
+        xml_element = etree.SubElement(
+            xml_parent,
+            "mesh",
+            attrib={"filename": self._filename_handler(mesh.filename)},
+        )
 
-        etree.SubElement(xml_parent, "mesh", attrib=attrib)
+        self._write_scale(xml_element, mesh.scale)
 
     def _parse_geometry(xml_element):
         geometry = Geometry()
