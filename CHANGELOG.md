@@ -3,6 +3,9 @@
 ## Version 0.0.23 (development)
 - The Great YOURDFPY Steering Committee (G.Y.S.C.) decides to jump as many version numbers ahead as needed to pass urdfpy
 
+## Version 0.0.11 (development)
+- These numbers are going up quickly.
+
 ## Version 0.0.7 (development)
 - Wow. This was quite the evening.
 
