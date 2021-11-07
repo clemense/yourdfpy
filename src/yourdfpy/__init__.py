@@ -1052,18 +1052,19 @@ class URDF:
         return subrobot
 
     def split_along_joints(self, joint_type="floating"):
+        root_urdf = URDF(
+            robot=copy.deepcopy(self.robot),
+            load_meshes=False,
+            generate_scene_graph=False,
+        )
         result = [
             (
                 np.eye(4),
-                URDF(
-                    robot=copy.deepcopy(self.robot),
-                    load_meshes=False,
-                    generate_scene_graph=False,
-                ),
+                root_urdf,
             )
         ]
 
-        # find all freejoints
+        # find all relevant joints
         joint_names = [j.name for j in self.robot.joints if j.type == joint_type]
         for joint_name in joint_names:
             root_link = self.link_map[self.joint_map[joint_name].child]
@@ -1081,11 +1082,19 @@ class URDF:
                 )
             )
 
-            # remove links and joints from
+            # remove links and joints from root robot
             for j in new_robot.joints:
-                result[0][-1].robot.joints.remove(result[0][-1].joint_map[j.name])
+                root_urdf.robot.joints.remove(result[0][-1].joint_map[j.name])
             for l in new_robot.links:
-                result[0][-1].robot.links.remove(result[0][-1].link_map[l.name])
+                root_urdf.robot.links.remove(result[0][-1].link_map[l.name])
+
+            # remove joint that connects root urdf to root_link
+            if root_link.name in [j.child for j in root_urdf.robot.joints]:
+                root_urdf.robot.joints.remove(
+                    root_urdf.robot.joints[
+                        [j.child for j in root_urdf.robot.joints].index(root_link.name)
+                    ]
+                )
 
         return result
 
