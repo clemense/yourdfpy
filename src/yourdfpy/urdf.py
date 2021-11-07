@@ -504,9 +504,35 @@ class URDF:
             if not "mesh_dir" in kwargs:
                 kwargs["mesh_dir"] = os.path.dirname(fname_or_file)
 
-        parser = etree.XMLParser(remove_blank_text=True)
-        tree = etree.parse(fname_or_file, parser)
-        xml_root = tree.getroot()
+        try:
+            parser = etree.XMLParser(remove_blank_text=True)
+            tree = etree.parse(fname_or_file, parser)
+            xml_root = tree.getroot()
+        except Exception as e:
+            _logger.error(e)
+            _logger.error("Using different parsing approach.")
+
+            events = ("start", "end", "start-ns", "end-ns")
+            xml = etree.iterparse(fname_or_file, recover=True, events=events)
+
+            # Iterate through all XML elements
+            for action, elem in xml:
+                # Skip comments and processing instructions,
+                # because they do not have names
+                if not (
+                    isinstance(elem, etree._Comment)
+                    or isinstance(elem, etree._ProcessingInstruction)
+                ):
+                    # Remove a namespace URI in the element's name
+                    # elem.tag = etree.QName(elem).localname
+                    if action == "end" and ":" in elem.tag:
+                        elem.getparent().remove(elem)
+
+            xml_root = xml.root
+
+        # Remove comments
+        etree.strip_tags(xml_root, etree.Comment)
+        etree.cleanup_namespaces(xml_root)
 
         return URDF(robot=URDF._parse_robot(xml_element=xml_root), **kwargs)
 
@@ -828,8 +854,8 @@ class URDF:
 
         return Mimic(
             joint=xml_element.get("joint"),
-            multiplier=float(xml_element.get("multiplier")),
-            offset=float(xml_element.get("offset")),
+            multiplier=_str2float(xml_element.get("multiplier")),
+            offset=_str2float(xml_element.get("offset")),
         )
 
     def _write_mimic(self, xml_parent, mimic):
@@ -848,10 +874,10 @@ class URDF:
             return None
 
         return SafetyController(
-            soft_lower_limit=float(xml_element.get("soft_lower_limit")),
-            soft_upper_limit=float(xml_element.get("soft_upper_limit")),
-            k_position=float(xml_element.get("k_position")),
-            k_velocity=float(xml_element.get("k_velocity")),
+            soft_lower_limit=_str2float(xml_element.get("soft_lower_limit")),
+            soft_upper_limit=_str2float(xml_element.get("soft_upper_limit")),
+            k_position=_str2float(xml_element.get("k_position")),
+            k_velocity=_str2float(xml_element.get("k_velocity")),
         )
 
     def _write_safety_controller(self, xml_parent, safety_controller):
@@ -959,8 +985,8 @@ class URDF:
             return None
 
         return Calibration(
-            rising=float(xml_element.get("rising")),
-            falling=float(xml_element.get("falling")),
+            rising=_str2float(xml_element.get("rising")),
+            falling=_str2float(xml_element.get("falling")),
         )
 
     def _write_calibration(self, xml_parent, calibration):
@@ -1044,6 +1070,9 @@ class URDF:
         elif xml_element[0].tag == "mesh":
             geometry.mesh = URDF._parse_mesh(xml_element[0])
         else:
+            import pdb
+
+            pdb.set_trace()
             raise ValueError(f"Unknown tag: {xml_element[0].tag}")
 
         return geometry
@@ -1293,11 +1322,12 @@ class URDF:
         if xml_element is None:
             return None
 
-        limit = Limit()
-        limit.effort = _str2float(xml_element.get("effort", default=None))
-        limit.velocity = _str2float(xml_element.get("velocity", default=None))
-        limit.lower = _str2float(xml_element.get("lower", default=None))
-        limit.upper = _str2float(xml_element.get("upper", default=None))
+        return Limit(
+            effort=_str2float(xml_element.get("effort", default=None)),
+            velocity=_str2float(xml_element.get("velocity", default=None)),
+            lower=_str2float(xml_element.get("lower", default=None)),
+            upper=_str2float(xml_element.get("upper", default=None)),
+        )
 
         return limit
 
