@@ -449,8 +449,19 @@ class URDF:
 
         return Mimic(
             joint=xml_element.get("joint"),
-            multiplier=xml_element.get("multiplier"),
-            offset=xml_element.get("offset"),
+            multiplier=float(xml_element.get("multiplier")),
+            offset=float(xml_element.get("offset")),
+        )
+
+    def _write_mimic(self, xml_parent, mimic):
+        etree.SubElement(
+            xml_parent,
+            "mimic",
+            attrib={
+                "joint": mimic.joint,
+                "multiplier": str(mimic.multiplier),
+                "offset": str(mimic.offset),
+            },
         )
 
     def _parse_safety_controller(xml_element):
@@ -458,10 +469,22 @@ class URDF:
             return None
 
         return SafetyController(
-            soft_lower_limit=xml_element.get("soft_lower_limit"),
-            soft_upper_limit=xml_element.get("soft_upper_limit"),
-            k_position=xml_element.get("k_position"),
-            k_velocity=xml_element.get("k_velocity"),
+            soft_lower_limit=float(xml_element.get("soft_lower_limit")),
+            soft_upper_limit=float(xml_element.get("soft_upper_limit")),
+            k_position=float(xml_element.get("k_position")),
+            k_velocity=float(xml_element.get("k_velocity")),
+        )
+
+    def _write_safety_controller(self, xml_parent, safety_controller):
+        etree.SubElement(
+            xml_parent,
+            "safety_controller",
+            attrib={
+                "soft_lower_limit": str(safety_controller.soft_lower_limit),
+                "soft_upper_limit": str(safety_controller.soft_upper_limit),
+                "k_position": str(safety_controller.k_position),
+                "k_velocity": str(safety_controller.k_velocity),
+            },
         )
 
     def _parse_transmission_joint(xml_element):
@@ -508,7 +531,18 @@ class URDF:
             return None
 
         return Calibration(
-            rising=xml_element.get("rising"), falling=xml_element.get("falling")
+            rising=float(xml_element.get("rising")),
+            falling=float(xml_element.get("falling")),
+        )
+
+    def _write_calibration(self, xml_parent, calibration):
+        etree.SubElement(
+            xml_parent,
+            "calibration",
+            attrib={
+                "rising": str(calibration.rising),
+                "falling": str(calibration.falling),
+            },
         )
 
     def _parse_box(xml_element):
