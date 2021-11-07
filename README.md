@@ -2,6 +2,8 @@
 
 Yet anOther URDF parser for Python. Yup, it's another one. Deal with it.
 
+Yourdfpy is a simpler and easier-to-use library for loading, manipulating, validating, saving, and visualizing URDF files.
+
 ## Installation
 
 You can install yourdfpy directly from pip:
