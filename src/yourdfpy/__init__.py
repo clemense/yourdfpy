@@ -35,14 +35,6 @@ _logger = logging.getLogger(__name__)
 
 
 @dataclass
-class Transmission:
-    name: str
-    type: Optional[str] = None
-    joints: List[TransmissionJoint] = field(default_factory=list)
-    actuators: List[Actuator] = field(default_factory=list)
-
-
-@dataclass
 class TransmissionJoint:
     name: str
     hardware_interfaces: List[str] = field(default_factory=list)
@@ -54,6 +46,14 @@ class Actuator:
     mechanical_reduction: Optional[float] = None
     # The follwing is only valid for ROS Indigo and prior version
     hardware_interfaces: List[str] = field(default_factory=list)
+
+
+@dataclass
+class Transmission:
+    name: str
+    type: Optional[str] = None
+    joints: List[TransmissionJoint] = field(default_factory=list)
+    actuators: List[Actuator] = field(default_factory=list)
 
 
 @dataclass
@@ -418,6 +418,36 @@ class URDF:
         self._link_map = {}
         for l in self.robot.links:
             self._link_map[l.name] = l
+
+    def _parse_transmission_joint(xml_element):
+        transmission_joint = TransmissionJoint(name=xml_element.get("name"))
+
+        for h in xml_element.findall("hardware_interface"):
+            transmission_joint.hardware_interfaces.append(h.text)
+
+        return transmission_joint
+
+    def _parse_actuator(xml_element):
+        actuator = Actuator(name=xml_element.get("name"))
+        if xml_element.find("mechanicalReduction"):
+            actuator.mechanical_reduction = float(
+                xml_element.find("mechanicalReduction").text
+            )
+
+        for h in xml_element.findall("hardware_interface"):
+            actuator.hardware_interfaces.append(h.text)
+
+        return actuator
+
+    def _parse_transmission(xml_element):
+        transmission = Transmission(name=xml_element.get("name"))
+
+        for j in xml_element.findall("joint"):
+            transmission.joints.append(URDF._parse_transmission_joint(j))
+        for a in xml_element.findall("actuator"):
+            transmission.actuators.append(URDF._parse_actuator(a))
+
+        return transmission
 
     def _parse_box(xml_element):
         return Box(size=np.array(xml_element.attrib["size"].split()))
