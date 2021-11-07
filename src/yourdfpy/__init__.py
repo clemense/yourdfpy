@@ -177,6 +177,9 @@ class Joint:
     axis: np.ndarray = None
     dynamics: Optional[Dynamics] = None
     limit: Optional[Limit] = None
+    mimic: Optional[Mimic] = None
+    calibration: Optional[Calibration] = None
+    safety_controller: Optional[SafetyController] = None
 
 
 @dataclass
@@ -441,6 +444,9 @@ class URDF:
             self._link_map[l.name] = l
 
     def _parse_mimic(xml_element):
+        if xml_element is None:
+            return None
+
         return Mimic(
             joint=xml_element.get("joint"),
             multiplier=xml_element.get("multiplier"),
@@ -448,6 +454,9 @@ class URDF:
         )
 
     def _parse_safety_controller(xml_element):
+        if xml_element is None:
+            return None
+
         return SafetyController(
             soft_lower_limit=xml_element.get("soft_lower_limit"),
             soft_upper_limit=xml_element.get("soft_upper_limit"),
@@ -456,6 +465,9 @@ class URDF:
         )
 
     def _parse_transmission_joint(xml_element):
+        if xml_element is None:
+            return None
+
         transmission_joint = TransmissionJoint(name=xml_element.get("name"))
 
         for h in xml_element.findall("hardware_interface"):
@@ -464,6 +476,9 @@ class URDF:
         return transmission_joint
 
     def _parse_actuator(xml_element):
+        if xml_element is None:
+            return None
+
         actuator = Actuator(name=xml_element.get("name"))
         if xml_element.find("mechanicalReduction"):
             actuator.mechanical_reduction = float(
@@ -476,6 +491,9 @@ class URDF:
         return actuator
 
     def _parse_transmission(xml_element):
+        if xml_element is None:
+            return None
+
         transmission = Transmission(name=xml_element.get("name"))
 
         for j in xml_element.findall("joint"):
@@ -486,6 +504,9 @@ class URDF:
         return transmission
 
     def _parse_calibration(xml_element):
+        if xml_element is None:
+            return None
+
         return Calibration(
             rising=xml_element.get("rising"), falling=xml_element.get("falling")
         )
@@ -868,6 +889,11 @@ class URDF:
         joint.axis = URDF._parse_axis(xml_element.find("axis"))
         joint.limit = URDF._parse_limit(xml_element.find("limit"))
         joint.dynamics = URDF._parse_dynamics(xml_element.find("dynamics"))
+        joint.mimic = URDF._parse_mimic(xml_element.find("mimic"))
+        joint.calibration = URDF._parse_calibration(xml_element.find("calibration"))
+        joint.safety_controller = URDF._parse_safety_controller(
+            xml_element.find("safety_controller")
+        )
 
         return joint
 
