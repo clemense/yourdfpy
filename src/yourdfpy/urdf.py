@@ -662,10 +662,14 @@ class URDF:
                 new_filename = self._filename_handler(fname=v.geometry.mesh.filename)
 
                 if os.path.isfile(new_filename):
-                    print(f"Loading {v.geometry.mesh.filename} as {new_filename}")
+                    _logger.debug(
+                        f"Loading {v.geometry.mesh.filename} as {new_filename}"
+                    )
                     # try:
                     # os.path.join(self.mesh_dir, v.geometry.mesh.filename)
-                    new_s = trimesh.load(new_filename, force="scene")
+                    new_s = trimesh.load(
+                        new_filename, ignore_broken=True, force="scene"
+                    )
 
                     # scale mesh appropriately
                     if v.geometry.mesh.scale is not None:
@@ -675,19 +679,19 @@ class URDF:
                             if not np.all(
                                 v.geometry.mesh.scale == v.geometry.mesh.scale[0]
                             ):
-                                print(
+                                _logger.warn(
                                     f"Warning: Can't scale axis independently, will use the first entry of '{v.geometry.mesh.scale}'"
                                 )
                             new_s = new_s.scaled(v.geometry.mesh.scale[0])
                         else:
-                            print(
+                            _logger.warn(
                                 f"Warning: Can't interpret scale '{v.geometry.mesh.scale}'"
                             )
                     # except Exception as e:
                     #     print(e)
                     #     pass
                 else:
-                    print(f"Can't find {new_filename}")
+                    _logger.warn(f"Can't find {new_filename}")
 
             if new_s is not None:
                 for name, geom in new_s.geometry.items():
@@ -699,20 +703,31 @@ class URDF:
 
     def get_default_configuration(self):
         config = []
+        config_names = []
         for j in self.robot.joints:
-            if j.type == "revolute" or j.type == "prismatic":
+            if j.mimic is not None:
+                cfg = [0.0]
+            elif j.type == "revolute" or j.type == "prismatic":
                 if j.limit is not None:
-                    config.append(j.limit.lower + 0.5 * (j.limit.upper - j.limit.lower))
+                    cfg = [j.limit.lower + 0.5 * (j.limit.upper - j.limit.lower)]
                 else:
-                    config.append(0.0)
+                    cfg = [0.0]
             elif j.type == "continuous" or j.type == "fixed":
-                config.append(0.0)
+                cfg = [0.0]
             elif j.type == "floating":
-                config.append([0.0] * 6)
+                cfg = [0.0] * 6
             elif j.type == "planar":
-                config.append([0.0] * 2)
+                cfg = [0.0] * 2
 
-        return np.array(config)
+            config.append(cfg)
+            config_names.append(j.name)
+
+        for i, j in enumerate(self.robot.joints):
+            if j.mimic is not None:
+                index = config_names.index(j.mimic.joint)
+                config[i][0] = config[index][0] * j.mimic.multiplier + j.mimic.offset
+
+        return np.array(config).flatten()
 
     def _create_scene(
         self, configuration=None, use_collision_geometry=False, load_geometry=True
