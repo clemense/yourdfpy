@@ -35,6 +35,28 @@ _logger = logging.getLogger(__name__)
 
 
 @dataclass
+class Transmission:
+    name: str
+    type: Optional[str] = None
+    joints: List[TransmissionJoint] = field(default_factory=list)
+    actuators: List[Actuator] = field(default_factory=list)
+
+
+@dataclass
+class TransmissionJoint:
+    name: str
+    hardware_interfaces: List[str] = field(default_factory=list)
+
+
+@dataclass
+class Actuator:
+    name: str
+    mechanical_reduction: Optional[float] = None
+    # The follwing is only valid for ROS Indigo and prior version
+    hardware_interfaces: List[str] = field(default_factory=list)
+
+
+@dataclass
 class Sphere:
     radius: float
 
