@@ -509,7 +509,7 @@ class URDF:
         for h in transmission_joint.hardware_interfaces:
             tmp = etree.SubElement(
                 xml_element,
-                "hardware_interface",
+                "hardwareInterface",
             )
             tmp.text = h
 
@@ -523,10 +523,29 @@ class URDF:
                 xml_element.find("mechanicalReduction").text
             )
 
-        for h in xml_element.findall("hardware_interface"):
+        for h in xml_element.findall("hardwareInterface"):
             actuator.hardware_interfaces.append(h.text)
 
         return actuator
+
+    def _write_actuator(self, xml_parent, actuator):
+        xml_element = etree.SubElement(
+            xml_parent,
+            "actuator",
+            attrib={
+                "name": str(actuator.name),
+            },
+        )
+        if actuator.mechanical_reduction is not None:
+            tmp = etree.SubElement("mechanicalReduction")
+            tmp.text = str(actuator.mechanical_reduction)
+
+        for h in actuator.hardware_interfaces:
+            tmp = etree.SubElement(
+                xml_element,
+                "hardwareInterface",
+            )
+            tmp.text = h
 
     def _parse_transmission(xml_element):
         if xml_element is None:
