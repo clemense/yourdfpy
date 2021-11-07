@@ -560,6 +560,21 @@ class URDF:
 
         return transmission
 
+    def _write_transmission(self, xml_parent, transmission):
+        xml_element = etree.SubElement(
+            xml_parent,
+            "transmission",
+            attrib={
+                "name": str(transmission.name),
+            },
+        )
+
+        for j in transmission.joints:
+            self._write_transmission_joint(xml_element, j)
+
+        for a in transmission.actuators:
+            self._write_actuator(xml_element, a)
+
     def _parse_calibration(xml_element):
         if xml_element is None:
             return None
