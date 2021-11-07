@@ -498,6 +498,21 @@ class URDF:
 
         return transmission_joint
 
+    def _write_transmission_joint(self, xml_parent, transmission_joint):
+        xml_element = etree.SubElement(
+            xml_parent,
+            "joint",
+            attrib={
+                "name": str(transmission_joint.name),
+            },
+        )
+        for h in transmission_joint.hardware_interfaces:
+            tmp = etree.SubElement(
+                xml_element,
+                "hardware_interface",
+            )
+            tmp.text = h
+
     def _parse_actuator(xml_element):
         if xml_element is None:
             return None
