@@ -57,6 +57,27 @@ class Transmission:
 
 
 @dataclass
+class Calibration:
+    rising: Optional[float] = None
+    falling: Optional[float] = None
+
+
+@dataclass
+class Mimic:
+    joint: str
+    multiplier: Optional[float] = None
+    offset: Optional[float] = None
+
+
+@dataclass
+class SafetyController:
+    soft_lower_limit: Optional[float] = None
+    soft_upper_limit: Optional[float] = None
+    k_position: Optional[float] = None
+    k_velocity: Optional[float] = None
+
+
+@dataclass
 class Sphere:
     radius: float
 
@@ -419,6 +440,21 @@ class URDF:
         for l in self.robot.links:
             self._link_map[l.name] = l
 
+    def _parse_mimic(xml_element):
+        return Mimic(
+            joint=xml_element.get("joint"),
+            multiplier=xml_element.get("multiplier"),
+            offset=xml_element.get("offset"),
+        )
+
+    def _parse_safety_controller(xml_element):
+        return SafetyController(
+            soft_lower_limit=xml_element.get("soft_lower_limit"),
+            soft_upper_limit=xml_element.get("soft_upper_limit"),
+            k_position=xml_element.get("k_position"),
+            k_velocity=xml_element.get("k_velocity"),
+        )
+
     def _parse_transmission_joint(xml_element):
         transmission_joint = TransmissionJoint(name=xml_element.get("name"))
 
@@ -448,6 +484,11 @@ class URDF:
             transmission.actuators.append(URDF._parse_actuator(a))
 
         return transmission
+
+    def _parse_calibration(xml_element):
+        return Calibration(
+            rising=xml_element.get("rising"), falling=xml_element.get("falling")
+        )
 
     def _parse_box(xml_element):
         return Box(size=np.array(xml_element.attrib["size"].split()))
