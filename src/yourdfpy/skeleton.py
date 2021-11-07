@@ -89,7 +89,7 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
     urdf_model = URDF.load(args.input)
-    urdf_model.show(use_collision_geometry=args.collision)
+    urdf_model.show(collision_geometry=args.collision)
 
 
 def run():
