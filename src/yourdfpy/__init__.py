@@ -44,7 +44,7 @@ class TransmissionJoint:
 class Actuator:
     name: str
     mechanical_reduction: Optional[float] = None
-    # The follwing is only valid for ROS Indigo and prior version
+    # The follwing is only valid for ROS Indigo and prior versions
     hardware_interfaces: List[str] = field(default_factory=list)
 
 
@@ -383,12 +383,21 @@ def validation_handler_strict(errors):
 class URDF:
     def __init__(
         self,
-        robot,
-        generate_scene_graph=True,
-        load_meshes=True,
+        robot: Robot = None,
+        generate_scene_graph: bool = True,
+        load_meshes: bool = True,
         filename_handler=None,
-        mesh_dir="",
+        mesh_dir: str = "",
     ):
+        """A URDF model.
+
+        Args:
+            robot (Robot): The robot model. Defaults to None.
+            generate_scene_graph (bool, optional): Wheter to build a scene graph to enable transformation queries and forward kinematics. Defaults to True.
+            load_meshes (bool, optional): Whether to load the meshes referenced in the <mesh> elements. Defaults to True.
+            filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
+            mesh_dir (str, optional): A root directory used for loading meshes. Defaults to "".
+        """
         if filename_handler is None:
             self._filename_handler = partial(filename_handler_magic, dir=mesh_dir)
         else:
@@ -411,22 +420,59 @@ class URDF:
             self._scene = None
 
     @property
-    def scene(self):
+    def scene(self) -> trimesh.Scene:
+        """A scene object representing the URDF model.
+
+        Returns:
+            trimesh.Scene: A trimesh scene object.
+        """
         return self._scene
 
     @property
-    def link_map(self):
+    def link_map(self) -> dict:
+        """A dictionary mapping link names to link objects.
+
+        Returns:
+            dict: Mapping from link name (str) to Link.
+        """
         return self._link_map
 
     @property
-    def joint_map(self):
+    def joint_map(self) -> dict:
+        """A dictionary mapping joint names to joint objects.
+
+        Returns:
+            dict: Mapping from joint name (str) to Joint.
+        """
         return self._joint_map
 
     def show(self, collision_geometry=False):
+        """Open a simpler viewer displaying the URDF model.
+
+        Args:
+            collision_geometry (bool, optional): Whether to display the <collision> or <visual> elements. Defaults to False.
+        """
         if collision_geometry:
-            self.scene.show()
+            self._scene.show()
         else:
-            self.scene.show()
+            self._scene.show()
+
+    def validate(self, validation_fn=None) -> bool:
+        """Validate URDF model.
+
+        Args:
+            validation_fn (function, optional): A function f(list[yourdfpy.URDFError]) -> bool. None uses the strict handler (any error leads to False). Defaults to None.
+
+        Returns:
+            bool: Whether the model is valid.
+        """
+        self.errors = []
+        self._validate_robot(self.robot)
+
+        if validation_fn is None:
+            validation_fn = validation_handler_strict
+
+        return validation_fn(self.errors)
 
     def _generate_scene_graph(self):
         pass
@@ -442,6 +488,357 @@ class URDF:
         self._link_map = {}
         for l in self.robot.links:
             self._link_map[l.name] = l
+
+    def _validate_robot(self, robot):
+        if robot is not None:
+            if robot.name is None:
+                self.errors.append(
+                    URDFIncompleteError(f"The <robot> tag misses a 'name' attribute.")
+                )
+            elif len(robot.name) == 0:
+                self.errors.append(
+                    URDFIncompleteError(
+                        f"The <robot> tag has an empty 'name' attribute."
+                    )
+                )
+
+    @staticmethod
+    def load(fname_or_file, **kwargs):
+        """Load URDF file from filename or file object.
+
+        Args:
+            fname_or_file (str or file object): A filename or file object, file-like object, stream representing the URDF file.
+
+        Raises:
+            ValueError: If filename does not exist.
+
+        Returns:
+            yourdfpy.URDF: URDF model.
+        """
+        if isinstance(fname_or_file, six.string_types):
+            if not os.path.isfile(fname_or_file):
+                raise ValueError("{} is not a file".format(fname_or_file))
+
+            if not "mesh_dir" in kwargs:
+                kwargs["mesh_dir"] = os.path.dirname(fname_or_file)
+
+        parser = etree.XMLParser(remove_blank_text=True)
+        tree = etree.parse(fname_or_file, parser)
+        xml_root = tree.getroot()
+
+        return URDF(robot=URDF._parse_robot(xml_element=xml_root), **kwargs)
+
+    def contains(self, key, value, element=None) -> bool:
+        """Checks recursively whether the URDF tree contains the provided key-value pair.
+
+        Args:
+            key (str): A key.
+            value (str): A value.
+            element (etree.Element, optional): The XML element from which to start the recursive search. None means URDF root. Defaults to None.
+
+        Returns:
+            bool: Whether the key-value pair was found.
+        """
+        if element is None:
+            element = self.robot
+
+        result = False
+        for field in element.__dataclass_fields__:
+            field_value = getattr(element, field)
+            if is_dataclass(field_value):
+                result = result or self.contains(
+                    key=key, value=value, element=field_value
+                )
+            elif (
+                isinstance(field_value, list)
+                and len(field_value) > 0
+                and is_dataclass(field_value[0])
+            ):
+                for field_value_element in field_value:
+                    result = result or self.contains(
+                        key=key, value=value, element=field_value_element
+                    )
+            else:
+                if key == field and value == field_value:
+                    result = True
+        return result
+
+    def _determine_base_link(self):
+        """Get the base link of the URDF tree by extracting all links without parents.
+        In case multiple links could be root chose the first.
+
+        Returns:
+            str: Name of the base link.
+        """
+        link_names = [l.name for l in self.robot.links]
+
+        for j in self.robot.joints:
+            link_names.remove(j.child)
+
+        if len(link_names) == 0:
+            # raise Error?
+            return None
+
+        return link_names[0]
+
+    def _forward_kinematics_joint(self, joint, q=0.0):
+        origin = np.eye(4) if joint.origin is None else joint.origin
+
+        if joint.type == "revolute":
+            matrix = origin @ tra.rotation_matrix(q, joint.axis)
+        elif joint.type == "prismatic":
+            matrix = origin @ tra.translation_matrix(q * joint.axis)
+        else:
+            matrix = origin
+
+        return matrix
+
+    def update_trimesh_scene(self, trimesh_scene, configuration):
+        # TODO: keep track of non-actuated joints
+        if len(configuration) != len(self.robot.joints):
+            raise ValueError(
+                f"Dimensionality of configuration ({len(configuration)}) doesn't match number of actuated joints ({len(self.robot.joints)})."
+            )
+
+        for j, q in zip(self.robot.joints, configuration):
+            matrix = self._forward_kinematics_joint(j, q=q)
+
+            trimesh_scene.graph.update(
+                frame_from=j.parent, frame_to=j.child, matrix=matrix
+            )
+
+    def _add_visual_to_scene(self, s, v, link_name, load_geometry=True):
+        origin = v.origin if v.origin is not None else np.eye(4)
+
+        if v.geometry is not None:
+            new_s = None
+
+            if v.geometry.box is not None:
+                new_s = trimesh.Scene(
+                    [trimesh.creation.box(extents=v.geometry.box.size)]
+                )
+            elif v.geometry.sphere is not None:
+                new_s = trimesh.Scene(
+                    [trimesh.creation.uv_sphere(radius=v.geometry.sphere.radius)]
+                )
+            elif v.geometry.cylinder is not None:
+                new_s = trimesh.Scene(
+                    [
+                        trimesh.creation.cylinder(
+                            radius=v.geometry.cylinder.radius,
+                            height=v.geometry.cylinder.length,
+                        )
+                    ]
+                )
+            elif v.geometry.mesh is not None and load_geometry:
+                new_filename = self._filename_handler(fname=v.geometry.mesh.filename)
+
+                if os.path.isfile(new_filename):
+                    print(f"Loading {v.geometry.mesh.filename} as {new_filename}")
+                    # try:
+                    # os.path.join(self.mesh_dir, v.geometry.mesh.filename)
+                    new_s = trimesh.load(new_filename, force="scene")
+
+                    # scale mesh appropriately
+                    if v.geometry.mesh.scale is not None:
+                        if isinstance(v.geometry.mesh.scale, float):
+                            new_s = new_s.scaled(v.geometry.mesh.scale)
+                        elif isinstance(v.geometry.mesh.scale, np.ndarray):
+                            if not np.all(
+                                v.geometry.mesh.scale == v.geometry.mesh.scale[0]
+                            ):
+                                print(
+                                    f"Warning: Can't scale axis independently, will use the first entry of '{v.geometry.mesh.scale}'"
+                                )
+                            new_s = new_s.scaled(v.geometry.mesh.scale[0])
+                        else:
+                            print(
+                                f"Warning: Can't interpret scale '{v.geometry.mesh.scale}'"
+                            )
+                    # except Exception as e:
+                    #     print(e)
+                    #     pass
+                else:
+                    print(f"Can't find {new_filename}")
+
+            if new_s is not None:
+                for name, geom in new_s.geometry.items():
+                    s.add_geometry(
+                        geometry=geom,
+                        parent_node_name=link_name,
+                        transform=origin @ new_s.graph.get(name)[0],
+                    )
+
+    def get_default_configuration(self):
+        config = []
+        for j in self.robot.joints:
+            if j.type == "revolute" or j.type == "prismatic":
+                if j.limit is not None:
+                    config.append(j.limit.lower + 0.5 * (j.limit.upper - j.limit.lower))
+                else:
+                    config.append(0.0)
+            elif j.type == "continuous" or j.type == "fixed":
+                config.append(0.0)
+            elif j.type == "floating":
+                config.append([0.0] * 6)
+            elif j.type == "planar":
+                config.append([0.0] * 2)
+
+        return np.array(config)
+
+    def _create_scene(
+        self, configuration=None, use_collision_geometry=False, load_geometry=True
+    ):
+        s = trimesh.scene.Scene(base_frame=self._determine_base_link())
+
+        configuration = (
+            self.get_default_configuration() if configuration is None else configuration
+        )
+        assert len(configuration) == len(self.robot.joints)
+
+        for j, q in zip(self.robot.joints, configuration):
+            matrix = self._forward_kinematics_joint(j, q=q)
+
+            s.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
+
+        for l in self.robot.links:
+            s.graph.nodes.add(l.name)
+
+            meshes = l.collisions if use_collision_geometry else l.visuals
+            for m in meshes:
+                self._add_visual_to_scene(
+                    s, m, link_name=l.name, load_geometry=load_geometry
+                )
+
+        return s
+
+    def _successors(self, node):
+        """
+        Get all nodes of the scene that succeeds a specified node.
+
+        Parameters
+        ------------
+        node : any
+          Hashable key in `scene.graph`
+
+        Returns
+        -----------
+        subnodes : set[str]
+          Set of nodes.
+        """
+        # get every node that is a successor to specified node
+        # this includes `node`
+        return self._scene.graph.transforms.successors(node)
+
+    def _create_subrobot(self, robot_name, root_link_name):
+        subrobot = Robot(name=robot_name)
+        subnodes = self._successors(node=root_link_name)
+
+        if len(subnodes) > 0:
+            for node in subnodes:
+                if node in self.link_map:
+                    subrobot.links.append(copy.deepcopy(self.link_map[node]))
+            for joint_name, joint in self.joint_map.items():
+                if joint.parent in subnodes and joint.child in subnodes:
+                    subrobot.joints.append(copy.deepcopy(self.joint_map[joint_name]))
+
+        return subrobot
+
+    def split_along_joints(self, joint_type="floating"):
+        """Split URDF model along a particular joint type.
+        The result is a set of URDF models which together compose the original URDF.
+
+        Args:
+            joint_type (str, optional): [description]. Defaults to "floating".
+
+        Returns:
+            list[(np.ndarray, yourdf.URDF)]: A list of tuples (np.ndarray, yourdf.URDF) whereas each homogeneous 4x4 matrix describes the root transformation of the respective URDF model w.r.t. the original URDF.
+        """
+        root_urdf = URDF(
+            robot=copy.deepcopy(self.robot),
+            load_meshes=False,
+            generate_scene_graph=False,
+        )
+        result = [
+            (
+                np.eye(4),
+                root_urdf,
+            )
+        ]
+
+        # find all relevant joints
+        joint_names = [j.name for j in self.robot.joints if j.type == joint_type]
+        for joint_name in joint_names:
+            root_link = self.link_map[self.joint_map[joint_name].child]
+            new_robot = self._create_subrobot(
+                robot_name=root_link.name,
+                root_link_name=root_link.name,
+            )
+
+            result.append(
+                (
+                    self._scene.graph.get(root_link.name)[0],
+                    URDF(
+                        robot=new_robot, load_meshes=False, generate_scene_graph=False
+                    ),
+                )
+            )
+
+            # remove links and joints from root robot
+            for j in new_robot.joints:
+                root_urdf.robot.joints.remove(result[0][-1].joint_map[j.name])
+            for l in new_robot.links:
+                root_urdf.robot.links.remove(result[0][-1].link_map[l.name])
+
+            # remove joint that connects root urdf to root_link
+            if root_link.name in [j.child for j in root_urdf.robot.joints]:
+                root_urdf.robot.joints.remove(
+                    root_urdf.robot.joints[
+                        [j.child for j in root_urdf.robot.joints].index(root_link.name)
+                    ]
+                )
+
+        return result
+
+    def validate_filenames(self):
+        for l in self.robot.links:
+            meshes = [
+                m.geometry.mesh
+                for m in l.collisions + l.visuals
+                if m.geometry.mesh is not None
+            ]
+            for m in meshes:
+                _logger.debug(m.filename, "-->", self._filename_handler(m.filename))
+                if not os.path.isfile(self._filename_handler(m.filename)):
+                    return False
+        return True
+
+    def write_xml(self):
+        """Write URDF model to an XML element hierarchy.
+
+        Returns:
+            etree.ElementTree: XML data.
+        """
+        xml_element = self._write_robot(self.robot)
+        return etree.ElementTree(xml_element)
+
+    def write_xml_string(self, **kwargs):
+        """Write URDF model to a string.
+
+        Returns:
+            str: String of the xml representation of the URDF model.
+        """
+        xml_element = self.write_xml()
+        return etree.tostring(xml_element, xml_declaration=True, *kwargs)
+
+    def write_xml_file(self, fname):
+        """Write URDF model to an xml file.
+
+        Args:
+            fname (str): Filename of the file to be written. Usually ends in `.urdf`.
+        """
+        xml_element = self.write_xml()
+        xml_element.write(fname, xml_declaration=True, pretty_print=True)
 
     def _parse_mimic(xml_element):
         if xml_element is None:
@@ -1013,28 +1410,6 @@ class URDF:
             robot.joints.append(URDF._parse_joint(j))
         return robot
 
-    def _validate_robot(self, robot):
-        if robot is not None:
-            if robot.name is None:
-                self.errors.append(
-                    URDFIncompleteError(f"The <robot> tag misses a 'name' attribute.")
-                )
-            elif len(robot.name) == 0:
-                self.errors.append(
-                    URDFIncompleteError(
-                        f"The <robot> tag has an empty 'name' attribute."
-                    )
-                )
-
-    def validate(self, validation_fn=None):
-        self.errors = []
-        self._validate_robot(self.robot)
-
-        if validation_fn is None:
-            validation_fn = validation_handler_strict
-
-        return validation_fn(self.errors)
-
     def _write_robot(self, robot):
         xml_element = etree.Element("robot", attrib={"name": robot.name})
         for link in robot.links:
@@ -1043,290 +1418,3 @@ class URDF:
             self._write_joint(xml_element, joint)
 
         return xml_element
-
-    @staticmethod
-    def load(fname_or_file, **kwargs):
-        if isinstance(fname_or_file, six.string_types):
-            if not os.path.isfile(fname_or_file):
-                raise ValueError("{} is not a file".format(fname_or_file))
-
-            if not "mesh_dir" in kwargs:
-                kwargs["mesh_dir"] = os.path.dirname(fname_or_file)
-
-        parser = etree.XMLParser(remove_blank_text=True)
-        tree = etree.parse(fname_or_file, parser)
-        xml_root = tree.getroot()
-
-        return URDF(robot=URDF._parse_robot(xml_element=xml_root), **kwargs)
-
-    def contains(self, key, value, element=None):
-        if element is None:
-            element = self.robot
-
-        result = False
-        for field in element.__dataclass_fields__:
-            field_value = getattr(element, field)
-            if is_dataclass(field_value):
-                result = result or self.contains(
-                    key=key, value=value, element=field_value
-                )
-            elif (
-                isinstance(field_value, list)
-                and len(field_value) > 0
-                and is_dataclass(field_value[0])
-            ):
-                for field_value_element in field_value:
-                    result = result or self.contains(
-                        key=key, value=value, element=field_value_element
-                    )
-            else:
-                if key == field and value == field_value:
-                    result = True
-        return result
-
-    def _determine_base_link(self):
-        link_names = [l.name for l in self.robot.links]
-
-        for j in self.robot.joints:
-            link_names.remove(j.child)
-
-        if len(link_names) == 0:
-            # raise Error?
-            return None
-
-        return random.choice(link_names)
-
-    def _forward_kinematics_joint(self, joint, q=0.0):
-        origin = np.eye(4) if joint.origin is None else joint.origin
-
-        if joint.type == "revolute":
-            matrix = origin @ tra.rotation_matrix(q, joint.axis)
-        elif joint.type == "prismatic":
-            matrix = origin @ tra.translation_matrix(q * joint.axis)
-        else:
-            matrix = origin
-
-        return matrix
-
-    def update_trimesh_scene(self, trimesh_scene, configuration):
-        # TODO: keep track of non-actuated joints
-        if len(configuration) != len(self.robot.joints):
-            raise ValueError(
-                f"Dimensionality of configuration ({len(configuration)}) doesn't match number of actuated joints ({len(self.robot.joints)})."
-            )
-
-        for j, q in zip(self.robot.joints, configuration):
-            matrix = self._forward_kinematics_joint(j, q=q)
-
-            trimesh_scene.graph.update(
-                frame_from=j.parent, frame_to=j.child, matrix=matrix
-            )
-
-    def _add_visual_to_scene(self, s, v, link_name, load_geometry=True):
-        origin = v.origin if v.origin is not None else np.eye(4)
-
-        if v.geometry is not None:
-            new_s = None
-
-            if v.geometry.box is not None:
-                new_s = trimesh.Scene(
-                    [trimesh.creation.box(extents=v.geometry.box.size)]
-                )
-            elif v.geometry.sphere is not None:
-                new_s = trimesh.Scene(
-                    [trimesh.creation.uv_sphere(radius=v.geometry.sphere.radius)]
-                )
-            elif v.geometry.cylinder is not None:
-                new_s = trimesh.Scene(
-                    [
-                        trimesh.creation.cylinder(
-                            radius=v.geometry.cylinder.radius,
-                            height=v.geometry.cylinder.length,
-                        )
-                    ]
-                )
-            elif v.geometry.mesh is not None and load_geometry:
-                new_filename = self._filename_handler(fname=v.geometry.mesh.filename)
-
-                if os.path.isfile(new_filename):
-                    print(f"Loading {v.geometry.mesh.filename} as {new_filename}")
-                    # try:
-                    # os.path.join(self.mesh_dir, v.geometry.mesh.filename)
-                    new_s = trimesh.load(new_filename, force="scene")
-
-                    # scale mesh appropriately
-                    if v.geometry.mesh.scale is not None:
-                        if isinstance(v.geometry.mesh.scale, float):
-                            new_s = new_s.scaled(v.geometry.mesh.scale)
-                        elif isinstance(v.geometry.mesh.scale, np.ndarray):
-                            if not np.all(
-                                v.geometry.mesh.scale == v.geometry.mesh.scale[0]
-                            ):
-                                print(
-                                    f"Warning: Can't scale axis independently, will use the first entry of '{v.geometry.mesh.scale}'"
-                                )
-                            new_s = new_s.scaled(v.geometry.mesh.scale[0])
-                        else:
-                            print(
-                                f"Warning: Can't interpret scale '{v.geometry.mesh.scale}'"
-                            )
-                    # except Exception as e:
-                    #     print(e)
-                    #     pass
-                else:
-                    print(f"Can't find {new_filename}")
-
-            if new_s is not None:
-                for name, geom in new_s.geometry.items():
-                    s.add_geometry(
-                        geometry=geom,
-                        parent_node_name=link_name,
-                        transform=origin @ new_s.graph.get(name)[0],
-                    )
-
-    def get_default_configuration(self):
-        config = []
-        for j in self.robot.joints:
-            if j.type == "revolute" or j.type == "prismatic":
-                if j.limit is not None:
-                    config.append(j.limit.lower + 0.5 * (j.limit.upper - j.limit.lower))
-                else:
-                    config.append(0.0)
-            elif j.type == "continuous" or j.type == "fixed":
-                config.append(0.0)
-            elif j.type == "floating":
-                config.append([0.0] * 6)
-            elif j.type == "planar":
-                config.append([0.0] * 2)
-
-        return np.array(config)
-
-    def _create_scene(
-        self, configuration=None, use_collision_geometry=False, load_geometry=True
-    ):
-        s = trimesh.scene.Scene(base_frame=self._determine_base_link())
-
-        configuration = (
-            self.get_default_configuration() if configuration is None else configuration
-        )
-        assert len(configuration) == len(self.robot.joints)
-
-        for j, q in zip(self.robot.joints, configuration):
-            matrix = self._forward_kinematics_joint(j, q=q)
-
-            s.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
-
-        for l in self.robot.links:
-            s.graph.nodes.add(l.name)
-
-            meshes = l.collisions if use_collision_geometry else l.visuals
-            for m in meshes:
-                self._add_visual_to_scene(
-                    s, m, link_name=l.name, load_geometry=load_geometry
-                )
-
-        return s
-
-    def _successors(self, node):
-        """
-        Get all nodes of the scene that succeeds a specified node.
-
-        Parameters
-        ------------
-        node : any
-          Hashable key in `scene.graph`
-
-        Returns
-        -----------
-        subnodes : set[str]
-          Set of nodes.
-        """
-        # get every node that is a successor to specified node
-        # this includes `node`
-        return self._scene.graph.transforms.successors(node)
-
-    def _create_subrobot(self, robot_name, root_link_name):
-        subrobot = Robot(name=robot_name)
-        subnodes = self._successors(node=root_link_name)
-
-        if len(subnodes) > 0:
-            for node in subnodes:
-                if node in self.link_map:
-                    subrobot.links.append(copy.deepcopy(self.link_map[node]))
-            for joint_name, joint in self.joint_map.items():
-                if joint.parent in subnodes and joint.child in subnodes:
-                    subrobot.joints.append(copy.deepcopy(self.joint_map[joint_name]))
-
-        return subrobot
-
-    def split_along_joints(self, joint_type="floating"):
-        root_urdf = URDF(
-            robot=copy.deepcopy(self.robot),
-            load_meshes=False,
-            generate_scene_graph=False,
-        )
-        result = [
-            (
-                np.eye(4),
-                root_urdf,
-            )
-        ]
-
-        # find all relevant joints
-        joint_names = [j.name for j in self.robot.joints if j.type == joint_type]
-        for joint_name in joint_names:
-            root_link = self.link_map[self.joint_map[joint_name].child]
-            new_robot = self._create_subrobot(
-                robot_name=root_link.name,
-                root_link_name=root_link.name,
-            )
-
-            result.append(
-                (
-                    self._scene.graph.get(root_link.name)[0],
-                    URDF(
-                        robot=new_robot, load_meshes=False, generate_scene_graph=False
-                    ),
-                )
-            )
-
-            # remove links and joints from root robot
-            for j in new_robot.joints:
-                root_urdf.robot.joints.remove(result[0][-1].joint_map[j.name])
-            for l in new_robot.links:
-                root_urdf.robot.links.remove(result[0][-1].link_map[l.name])
-
-            # remove joint that connects root urdf to root_link
-            if root_link.name in [j.child for j in root_urdf.robot.joints]:
-                root_urdf.robot.joints.remove(
-                    root_urdf.robot.joints[
-                        [j.child for j in root_urdf.robot.joints].index(root_link.name)
-                    ]
-                )
-
-        return result
-
-    def validate_filenames(self):
-        for l in self.robot.links:
-            meshes = [
-                m.geometry.mesh
-                for m in l.collisions + l.visuals
-                if m.geometry.mesh is not None
-            ]
-            for m in meshes:
-                _logger.debug(m.filename, "-->", self._filename_handler(m.filename))
-                if not os.path.isfile(self._filename_handler(m.filename)):
-                    return False
-        return True
-
-    def write_xml(self):
-        xml_element = self._write_robot(self.robot)
-        return etree.ElementTree(xml_element)
-
-    def write_xml_string(self, **kwargs):
-        xml_element = self.write_xml()
-        return etree.tostring(xml_element, xml_declaration=True, *kwargs)
-
-    def write_xml_file(self, fname):
-        xml_element = self.write_xml()
-        xml_element.write(fname, xml_declaration=True, pretty_print=True)
