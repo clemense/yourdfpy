@@ -727,6 +727,7 @@ class URDF:
                 index = config_names.index(j.mimic.joint)
                 config[i][0] = config[index][0] * j.mimic.multiplier + j.mimic.offset
 
+        # TODO: Creating an ndarray from ragged nested sequences (which is a list-or-tuple of lists-or-tuples-or ndarrays with different lengths or shapes) is deprecated. If you meant to do this, you must specify 'dtype=object' when creating the ndarray
         return np.array(config).flatten()
 
     def _create_scene(
@@ -795,7 +796,7 @@ class URDF:
             joint_type (str, optional): [description]. Defaults to "floating".
 
         Returns:
-            list[(np.ndarray, yourdf.URDF)]: A list of tuples (np.ndarray, yourdf.URDF) whereas each homogeneous 4x4 matrix describes the root transformation of the respective URDF model w.r.t. the original URDF.
+            list[(np.ndarray, yourdfpy.URDF)]: A list of tuples (np.ndarray, yourdfpy.URDF) whereas each homogeneous 4x4 matrix describes the root transformation of the respective URDF model w.r.t. the original URDF.
         """
         root_urdf = URDF(
             robot=copy.deepcopy(self.robot),
