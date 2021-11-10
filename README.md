@@ -14,17 +14,17 @@ pip install yourdfpy
 
 ## But why another one?!?
 
-|                                                         | [urdfpy](https://github.com/mmatl/urdfpy) | [urdf_parser_py](https://github.com/ros/urdf_parser_py) |    **yourdfpy**    |
-| ------------------------------------------------------: | :---------------------------------------: | :-----------------------------------------------------: | :----------------: |
-|                        Decouple parsing from validation |                                           |                                                         | :heavy_check_mark: |
-|                    Decouple parsing from loading meshes |                                           |                   :heavy_check_mark:                    | :heavy_check_mark: |
-|                                          Visualize URDF |            :heavy_check_mark:             |                                                         | :heavy_check_mark: |
-|                                      Forward Kinematics |            :heavy_check_mark:             |                                                         | :heavy_check_mark: |
-|                                         Robustness Test |                   4/12                    |                          6/12                           |       12/12        |
-|                  Avg. loading time per file (w/ meshes) |                  480 ms                   |                                                         |       370 ms       |
-|                                            (w/o meshes) |                                           |                         3.2 ms                          |       6.2 ms       |
-|         Test on 4 URDF files on which `urdfpy` succeeds |                 347.5 ms                  |                                                         |       203 ms       |
-| Test on 6 URDF files on which `urdf_parser_py` succeeds |                                           |                         2.6 ms                          |       3.8 ms       |
+|                                                                                          | [urdfpy](https://github.com/mmatl/urdfpy) | [urdf_parser_py](https://github.com/ros/urdf_parser_py) |    **yourdfpy**    |
+| ---------------------------------------------------------------------------------------: | :---------------------------------------: | :-----------------------------------------------------: | :----------------: |
+|                                                         Decouple parsing from validation |                                           |                                                         | :heavy_check_mark: |
+|                                                     Decouple parsing from loading meshes |                                           |                   :heavy_check_mark:                    | :heavy_check_mark: |
+|                                                                           Visualize URDF |            :heavy_check_mark:             |                                                         | :heavy_check_mark: |
+|                                                                       Forward Kinematics |            :heavy_check_mark:             |                                                         | :heavy_check_mark: |
+| Robustness Test on 12 URDF files from [here](https://github.com/ankurhanda/robot-assets) |                   4/12                    |                          6/12                           |       12/12        |
+|                                             Avg. loading time per file (w/ mesh loading) |                  480 ms                   |                                                         |       370 ms       |
+|                                                                       (w/o mesh loading) |                                           |                         3.2 ms                          |       6.2 ms       |
+|                                          Test on 4 URDF files on which `urdfpy` succeeds |                 347.5 ms                  |                                                         |       203 ms       |
+|                                  Test on 6 URDF files on which `urdf_parser_py` succeeds |                                           |                         2.6 ms                          |       3.8 ms       |
 
 Entries for the above table were produced with:
 ```
