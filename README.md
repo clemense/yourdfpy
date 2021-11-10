@@ -22,9 +22,9 @@ pip install yourdfpy
 |                                      Forward Kinematics |            :heavy_check_mark:             |                                                         | :heavy_check_mark: |
 |                                         Robustness Test |                   4/12                    |                          6/12                           |       12/12        |
 |                  Avg. loading time per file (w/ meshes) |                  480 ms                   |                                                         |       370 ms       |
-|                                            (w/o meshes) |                                           |                         3.23 ms                         |      6.16 ms       |
-|         Test on 4 URDF files on which `urdfpy` succeeds |                  1390 ms                  |                                                         |       813 ms       |
-| Test on 6 URDF files on which `urdf_parser_py` succeeds |                                           |                         15.7 ms                         |      22.8 ms       |
+|                                            (w/o meshes) |                                           |                         3.2 ms                          |       6.2 ms       |
+|         Test on 4 URDF files on which `urdfpy` succeeds |                 347.5 ms                  |                                                         |       203 ms       |
+| Test on 6 URDF files on which `urdf_parser_py` succeeds |                                           |                         2.6 ms                          |       3.8 ms       |
 
 Entries for the above table were produced with:
 ```
