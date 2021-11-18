@@ -457,6 +457,10 @@ class URDF:
         """
         return self._errors
 
+    def clear_errors(self):
+        """Clear the validation error log."""
+        self._errors = []
+
     def show(self, collision_geometry=False):
         """Open a simpler viewer displaying the URDF model.
 
@@ -500,18 +504,11 @@ class URDF:
         for l in self.robot.links:
             self._link_map[l.name] = l
 
-    def _validate_robot(self, robot):
-        if robot is not None:
-            if robot.name is None:
-                self._errors.append(
-                    URDFIncompleteError(f"The <robot> tag misses a 'name' attribute.")
-                )
-            elif len(robot.name) == 0:
-                self._errors.append(
-                    URDFIncompleteError(
-                        f"The <robot> tag has an empty 'name' attribute."
-                    )
-                )
+    def _validate_required_attribute(self, attribute, error_msg):
+        if attribute is None:
+            self._errors.append(URDFIncompleteError(error_msg))
+        elif len(attribute) == 0:
+            self._errors.append(URDFIncompleteError(error_msg))
 
     @staticmethod
     def load(fname_or_file, **kwargs):
@@ -1115,12 +1112,37 @@ class URDF:
         elif xml_element[0].tag == "mesh":
             geometry.mesh = URDF._parse_mesh(xml_element[0])
         else:
-            import pdb
-
-            pdb.set_trace()
             raise ValueError(f"Unknown tag: {xml_element[0].tag}")
 
         return geometry
+
+    def _validate_geometry(self, geometry):
+        if geometry is None:
+            self._errors.append(URDFIncompleteError("<geometry> is missing."))
+
+        num_nones = sum(
+            [
+                x is not None
+                for x in [
+                    geometry.box,
+                    geometry.cylinder,
+                    geometry.sphere,
+                    geometry.mesh,
+                ]
+            ]
+        )
+        if num_nones < 1:
+            self._errors.append(
+                URDFIncompleteError(
+                    "One of <sphere>, <cylinder>, <box>, <mesh> needs to be defined as a child of <geometry>."
+                )
+            )
+        elif num_nones > 1:
+            self._errors.append(
+                URDFError(
+                    "Too many of <sphere>, <cylinder>, <box>, <mesh> defined as a child of <geometry>. Only one allowed."
+                )
+            )
 
     def _write_geometry(self, xml_parent, geometry):
         if geometry is None:
@@ -1219,6 +1241,9 @@ class URDF:
 
         return visual
 
+    def _validate_visual(self, visual):
+        self._validate_geometry(visual.geometry)
+
     def _write_visual(self, xml_parent, visual):
         xml_element = etree.SubElement(xml_parent, "visual")
 
@@ -1233,6 +1258,9 @@ class URDF:
         collision.origin = URDF._parse_origin(xml_element.find("origin"))
 
         return collision
+
+    def _validate_collision(self, collision):
+        self._validate_geometry(collision.geometry)
 
     def _write_collision(self, xml_parent, collision):
         xml_element = etree.SubElement(xml_parent, "collision")
@@ -1334,6 +1362,17 @@ class URDF:
             link.collisions.append(URDF._parse_collision(c))
 
         return link
+
+    def _validate_link(self, link):
+        self._validate_required_attribute(
+            attribute=link.name, error_msg="The <link> tag misses a 'name' attribute."
+        )
+
+        for v in link.visuals:
+            self._validate_visual(v)
+
+        for c in link.collisions:
+            self._validate_collisions(c)
 
     def _write_link(self, xml_parent, link):
         xml_element = etree.SubElement(
@@ -1440,6 +1479,9 @@ class URDF:
 
         return joint
 
+    def _validate_joint(self, joint):
+        pass
+
     def _write_joint(self, xml_parent, joint):
         xml_element = etree.SubElement(
             xml_parent,
@@ -1466,6 +1508,19 @@ class URDF:
         for j in xml_element.findall("joint"):
             robot.joints.append(URDF._parse_joint(j))
         return robot
+
+    def _validate_robot(self, robot):
+        if robot is not None:
+            self._validate_required_attribute(
+                attribute=robot.name,
+                error_msg="The <robot> tag misses a 'name' attribute.",
+            )
+
+            for l in robot.links:
+                self._validate_link(l)
+
+            for j in robot.joints:
+                self._validate_joint(j)
 
     def _write_robot(self, robot):
         xml_element = etree.Element("robot", attrib={"name": robot.name})
