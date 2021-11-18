@@ -412,7 +412,7 @@ class URDF:
             [j for j in self.robot.joints if j.type != "fixed"]
         )
 
-        self.errors = []
+        self._errors = []
 
         if generate_scene_graph:
             self._scene = self._create_scene(load_geometry=load_meshes)
@@ -448,6 +448,15 @@ class URDF:
         """
         return self._joint_map
 
+    @property
+    def errors(self) -> list:
+        """A list with validation errors.
+
+        Returns:
+            list: A list of validation errors.
+        """
+        return self._errors
+
     def show(self, collision_geometry=False):
         """Open a simpler viewer displaying the URDF model.
 
@@ -468,13 +477,13 @@ class URDF:
         Returns:
             bool: Whether the model is valid.
         """
-        self.errors = []
+        self._errors = []
         self._validate_robot(self.robot)
 
         if validation_fn is None:
             validation_fn = validation_handler_strict
 
-        return validation_fn(self.errors)
+        return validation_fn(self._errors)
 
     def _generate_scene_graph(self):
         pass
@@ -494,11 +503,11 @@ class URDF:
     def _validate_robot(self, robot):
         if robot is not None:
             if robot.name is None:
-                self.errors.append(
+                self._errors.append(
                     URDFIncompleteError(f"The <robot> tag misses a 'name' attribute.")
                 )
             elif len(robot.name) == 0:
-                self.errors.append(
+                self._errors.append(
                     URDFIncompleteError(
                         f"The <robot> tag has an empty 'name' attribute."
                     )
