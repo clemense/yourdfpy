@@ -3,6 +3,12 @@
 ## Version 0.0.23 (development)
 - The Great YOURDFPY Steering Committee (G.Y.S.C.) decides to jump as many version numbers ahead as needed to pass urdfpy
 
+## Version 0.0.14 (development)
+- The Great YOURDFPY Steering Committee (G.Y.S.C.) gives up on using only version numbers that are prime
+
+## Version 0.0.13 (development)
+- Adding images. For the Github crowd.
+
 ## Version 0.0.11 (development)
 - These numbers are going up quickly.
 
