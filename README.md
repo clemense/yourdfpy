@@ -13,6 +13,7 @@ pip install yourdfpy
 
 
 ## But why another one?!?
+![Example URDFs](https://github.com/clemense/yourdfpy/blob/main/docs/_static/urdf_examples.jpg?raw=true)
 
 |                                                                                          | [urdfpy](https://github.com/mmatl/urdfpy) | [urdf_parser_py](https://github.com/ros/urdf_parser_py) |    **yourdfpy**    |
 | ---------------------------------------------------------------------------------------: | :---------------------------------------: | :-----------------------------------------------------: | :----------------: |
