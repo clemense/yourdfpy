@@ -1,3 +1,7 @@
+[![Build Status](https://travis-ci.org/clemense/yourdfpy.svg?branch=master)](https://travis-ci.org/clemense/yourdfpy)
+[![Coverage Status](https://coveralls.io/repos/github/clemense/yourdfpy/badge.svg?branch=master)](https://coveralls.io/github/clemense/yourdfpy?branch=master)
+[![PyPI version](https://badge.fury.io/py/yourdfpy.svg)](https://badge.fury.io/py/yourdfpy)
+
 # yourdfpy
 
 Yet anOther URDF parser for Python. Yup, it's another one. Deal with it.
