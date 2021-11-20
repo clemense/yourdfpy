@@ -808,7 +808,12 @@ class URDF:
                         transform=origin @ new_s.graph.get(name)[0],
                     )
 
-    def get_default_configuration(self):
+    def get_default_cfg(self):
+        """Return default configuration of URDF model by using the average of each joint's limits if present, otherwise zero.
+
+        Returns:
+            (n), float: Default configuration of URDF model.
+        """
         config = []
         config_names = []
         for j in self.robot.joints:
