@@ -386,8 +386,10 @@ class URDF:
     def __init__(
         self,
         robot: Robot = None,
-        generate_scene_graph: bool = True,
+        build_scene_graph: bool = True,
+        build_collision_scene_graph: bool = False,
         load_meshes: bool = True,
+        load_collision_meshes: bool = False,
         filename_handler=None,
         mesh_dir: str = "",
     ):
@@ -395,7 +397,7 @@ class URDF:
 
         Args:
             robot (Robot): The robot model. Defaults to None.
-            generate_scene_graph (bool, optional): Wheter to build a scene graph to enable transformation queries and forward kinematics. Defaults to True.
+            build_scene_graph (bool, optional): Wheter to build a scene graph to enable transformation queries and forward kinematics. Defaults to True.
             load_meshes (bool, optional): Whether to load the meshes referenced in the <mesh> elements. Defaults to True.
             filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
             mesh_dir (str, optional): A root directory used for loading meshes. Defaults to "".
@@ -414,12 +416,19 @@ class URDF:
 
         self._errors = []
 
-        if generate_scene_graph:
-            self._scene = self._create_scene(load_geometry=load_meshes)
-            # if load_meshes:
-            #     self._load_meshes()
+        if build_scene_graph:
+            self._scene = self._create_scene(
+                use_collision_geometry=False, load_geometry=load_meshes
+            )
         else:
             self._scene = None
+
+        if build_collision_scene_graph:
+            self._scene_collision = self._create_scene(
+                use_collision_geometry=True, load_geometry=load_collision_meshes
+            )
+        else:
+            self._scene_collision = None
 
     @property
     def scene(self) -> trimesh.Scene:
@@ -429,6 +438,15 @@ class URDF:
             trimesh.Scene: A trimesh scene object.
         """
         return self._scene
+
+    @property
+    def collision_scene(self) -> trimesh.Scene:
+        """A scene object representing the <collision> elements of the URDF model
+
+        Returns:
+            trimesh.Scene: A trimesh scene object.
+        """
+        return self._scene_collision
 
     @property
     def link_map(self) -> dict:
@@ -468,9 +486,19 @@ class URDF:
             collision_geometry (bool, optional): Whether to display the <collision> or <visual> elements. Defaults to False.
         """
         if collision_geometry:
-            self._scene.show()
+            if self._scene_collision is None:
+                raise ValueError(
+                    "No collision scene available. Use build_collision_scene_graph=True and load_collision_meshes=True during loading."
+                )
+            else:
+                self._scene_collision.show()
         else:
-            self._scene.show()
+            if self._scene is None:
+                raise ValueError(
+                    "No scene available. Use build_scene_graph=True and load_meshes=True during loading."
+                )
+            else:
+                self._scene.show()
 
     def validate(self, validation_fn=None) -> bool:
         """Validate URDF model.

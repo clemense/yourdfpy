@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.0. (development)
+- Added pytests
+- Separate visual and collision scene
+- Rename constructor's parameter `create_scene_graph` to `build_scene_graph`
+
 ## Version 0.0.23 (development)
 - The Great YOURDFPY Steering Committee (G.Y.S.C.) decides to jump as many version numbers ahead as needed to pass urdfpy
 
