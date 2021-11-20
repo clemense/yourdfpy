@@ -193,6 +193,12 @@ class URDFIncompleteError(URDFError):
     pass
 
 
+class URDFAttributeValueError(URDFError):
+    """Raised when attribute value is not contained in the set of allowed values."""
+
+    pass
+
+
 class URDFBrokenRefError(URDFError):
     """Raised when a referenced object is not found in the scope."""
 
@@ -534,11 +540,15 @@ class URDF:
         for l in self.robot.links:
             self._link_map[l.name] = l
 
-    def _validate_required_attribute(self, attribute, error_msg):
+    def _validate_required_attribute(self, attribute, error_msg, allowed_values=None):
         if attribute is None:
             self._errors.append(URDFIncompleteError(error_msg))
-        elif len(attribute) == 0:
+        elif isinstance(attribute, str) and len(attribute) == 0:
             self._errors.append(URDFIncompleteError(error_msg))
+
+        if allowed_values is not None and attribute is not None:
+            if attribute not in allowed_values:
+                self._errors.append(URDFAttributeValueError(error_msg))
 
     @staticmethod
     def load(fname_or_file, **kwargs):
@@ -1402,7 +1412,7 @@ class URDF:
             self._validate_visual(v)
 
         for c in link.collisions:
-            self._validate_collisions(c)
+            self._validate_collision(c)
 
     def _write_link(self, xml_parent, link):
         xml_element = etree.SubElement(
@@ -1443,7 +1453,15 @@ class URDF:
             upper=_str2float(xml_element.get("upper", default=None)),
         )
 
-        return limit
+    def _validate_limit(self, limit):
+        self._validate_required_attribute(
+            limit.effort,
+            error_msg="Tag <limit> of joint is missing attribute 'effort'.",
+        )
+
+        self._validate_required_attribute(
+            limit.velocity, error_msg="Tag <limit> is missing attribute 'velocity'."
+        )
 
     def _write_limit(self, xml_parent, limit):
         if limit is None:
@@ -1510,7 +1528,42 @@ class URDF:
         return joint
 
     def _validate_joint(self, joint):
-        pass
+        self._validate_required_attribute(
+            attribute=joint.name,
+            error_msg="The <joint> tag misses a 'name' attribute.",
+        )
+
+        allowed_types = [
+            "revolute",
+            "continuous",
+            "prismatic",
+            "fixed",
+            "floating",
+            "planar",
+        ]
+        self._validate_required_attribute(
+            attribute=joint.type,
+            error_msg=f"The <joint> tag misses a 'type' attribute or value is not part of allowed values [{', '.join(allowed_types)}].",
+            allowed_values=allowed_types,
+        )
+
+        self._validate_required_attribute(
+            joint.parent,
+            error_msg=f"The <parent> of a <joint> is missing.",
+        )
+
+        self._validate_required_attribute(
+            joint.child,
+            error_msg=f"The <child> of a <joint> is missing.",
+        )
+
+        if joint.type in ["revolute", "prismatic"]:
+            self._validate_required_attribute(
+                joint.limit,
+                error_msg="The <limit> of a (prismatic, revolute) joint is missing.",
+            )
+
+            self._validate_limit(joint.limit)
 
     def _write_joint(self, xml_parent, joint):
         xml_element = etree.SubElement(
