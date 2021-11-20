@@ -417,10 +417,14 @@ class URDF:
 
         self.robot = robot
         self._create_maps()
+        self._update_actuated_joints()
 
-        self.num_actuated_joints = len(
-            [j for j in self.robot.joints if j.type != "fixed"]
-        )
+        self._cfg = self.get_default_cfg()
+
+        if build_scene_graph or build_collision_scene_graph:
+            self._base_link = self._determine_base_link()
+        else:
+            self._base_link = None
 
         self._errors = []
 
@@ -475,6 +479,69 @@ class URDF:
         return self._joint_map
 
     @property
+    def joint_names(self):
+        """List of joint names.
+
+        Returns:
+            list[str]: List of joint names of the URDF model.
+        """
+        return [j.name for j in self.robot.joints]
+
+    @property
+    def actuated_joints(self):
+        """List of actuated joints. This excludes mimic and fixed joints.
+
+        Returns:
+            list[Joint]: List of actuated joints of the URDF model.
+        """
+        return self._actuated_joints
+
+    @property
+    def actuated_joint_indices(self):
+        """List of indices of all joints that are actuated, i.e., not of type mimic or fixed.
+
+        Returns:
+            list[int]: List of indices of actuated joints.
+        """
+        return self._actuated_joint_indices
+
+    @property
+    def actuated_joint_names(self):
+        """List of names of actuated joints. This excludes mimic and fixed joints.
+
+        Returns:
+            list[str]: List of names of actuated joints of the URDF model.
+        """
+        return [j.name for j in self._actuated_joints]
+
+    @property
+    def num_actuated_joints(self):
+        """Number of actuated joints.
+
+        Returns:
+            int: Number of actuated joints.
+        """
+        return len(self.actuated_joints)
+
+    @property
+    def cfg(self):
+        """Current configuration.
+
+        Returns:
+            np.ndarray: Current configuration of URDF model.
+        """
+        return self._cfg
+
+    @property
+    def base_link(self):
+        """Name of URDF base/root link.
+
+        Returns:
+            str: Name of base link of URDF model.
+        """
+        return self._base_link
+
+    @property
     def errors(self) -> list:
         """A list with validation errors.
 
@@ -525,12 +592,6 @@ class URDF:
 
         return validation_fn(self._errors)
 
-    def _generate_scene_graph(self):
-        pass
-
-    def _load_meshes(self):
-        pass
-
     def _create_maps(self):
         self._joint_map = {}
         for j in self.robot.joints:
@@ -539,6 +600,15 @@ class URDF:
         self._link_map = {}
         for l in self.robot.links:
             self._link_map[l.name] = l
+
+    def _update_actuated_joints(self):
+        self._actuated_joints = []
+        self._actuated_joint_indices = []
+
+        for i, j in enumerate(self.robot.joints):
+            if j.mimic is None and j.type != "fixed":
+                self._actuated_joints.append(j)
+                self._actuated_joint_indices.append(i)
 
     def _validate_required_attribute(self, attribute, error_msg, allowed_values=None):
         if attribute is None:
@@ -556,6 +626,12 @@ class URDF:
 
         Args:
             fname_or_file (str or file object): A filename or file object, file-like object, stream representing the URDF file.
+            **build_scene_graph (bool, optional): Wheter to build a scene graph to enable transformation queries and forward kinematics. Defaults to True.
+            **build_collision_scene_graph (bool, optional): Wheter to build a scene graph for <collision> elements. Defaults to False.
+            **load_meshes (bool, optional): Whether to load the meshes referenced in the <mesh> elements. Defaults to True.
+            **load_collision_meshes (bool, optional): Whether to load the collision meshes referenced in the <mesh> elements. Defaults to False.
+            **filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
+            **mesh_dir (str, optional): A root directory used for loading meshes. Defaults to "".
 
         Raises:
             ValueError: If filename does not exist.
@@ -658,6 +734,13 @@ class URDF:
     def _forward_kinematics_joint(self, joint, q=0.0):
         origin = np.eye(4) if joint.origin is None else joint.origin
 
+        if joint.mimic is not None:
+            mimic_joint_index = self.joint_names.index(joint.mimic.joint)
+            q = (
+                self._cfg[mimic_joint_index] * joint.mimic.multiplier
+                + joint.mimic.offset
+            )
+
         if joint.type == "revolute":
             matrix = origin @ tra.rotation_matrix(q, joint.axis)
         elif joint.type == "prismatic" or joint.type == "continuous":
@@ -666,7 +749,7 @@ class URDF:
             # this includes: floating, planar, fixed
             matrix = origin
 
-        return matrix
+        return matrix, q
 
     def update_cfg(self, configuration):
         """Update joint configuration of URDF; does forward kinematics.
@@ -680,7 +763,6 @@ class URDF:
         """
         joint_cfg = []
 
-        # TODO: keep track of non-actuated joints
         if isinstance(configuration, dict):
             for joint in configuration:
                 if isinstance(joint, six.string_types):
@@ -689,17 +771,27 @@ class URDF:
                     # TODO: Joint is not hashable; so this branch will not succeed
                     joint_cfg.append((joint, configuration[joint]))
         elif isinstance(configuration, (list, tuple, np.ndarray)):
-            if len(configuration) != len(self.robot.joints):
+            if len(configuration) == len(self.robot.joints):
+                for joint, value in zip(self.robot.joints, configuration):
+                    joint_cfg.append((joint, value))
+            elif len(configuration) == self.num_actuated_joints:
+                for joint, value in zip(self._actuated_joints, configuration):
+                    joint_cfg.append((joint, value))
+            else:
                 raise ValueError(
-                    f"Dimensionality of configuration ({len(configuration)}) doesn't match number of actuated joints ({len(self.robot.joints)})."
+                    f"Dimensionality of configuration ({len(configuration)}) doesn't match number of all ({len(self.robot.joints)}) or actuated joints ({self.num_actuated_joints})."
                 )
-            for joint, value in zip(self.robot.joints, configuration):
-                joint_cfg.append((joint, value))
         else:
             raise TypeError("Invalid type for configuration")
 
-        for j, q in joint_cfg:
-            matrix = self._forward_kinematics_joint(j, q=q)
+        # append all mimic joints in the update
+        for j, q in joint_cfg + [
+            (j, 0.0) for j in self.robot.joints if j.mimic is not None
+        ]:
+            matrix, joint_q = self._forward_kinematics_joint(j, q=q)
+
+            # update internal configuration vector - to enable mimic joint mapping
+            self._cfg[self.joint_names.index(j.name)] = joint_q
 
             if self._scene is not None:
                 self._scene.graph.update(
@@ -843,18 +935,12 @@ class URDF:
         # TODO: Creating an ndarray from ragged nested sequences (which is a list-or-tuple of lists-or-tuples-or ndarrays with different lengths or shapes) is deprecated. If you meant to do this, you must specify 'dtype=object' when creating the ndarray
         return np.array(config).flatten()
 
-    def _create_scene(
-        self, configuration=None, use_collision_geometry=False, load_geometry=True
-    ):
-        s = trimesh.scene.Scene(base_frame=self._determine_base_link())
+    def _create_scene(self, use_collision_geometry=False, load_geometry=True):
+        s = trimesh.scene.Scene(base_frame=self._base_link)
 
-        configuration = (
-            self.get_default_configuration() if configuration is None else configuration
-        )
-        assert len(configuration) == len(self.robot.joints)
-
+        configuration = self._cfg
         for j, q in zip(self.robot.joints, configuration):
-            matrix = self._forward_kinematics_joint(j, q=q)
+            matrix, _ = self._forward_kinematics_joint(j, q=q)
 
             s.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
 
