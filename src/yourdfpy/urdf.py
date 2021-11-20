@@ -667,19 +667,80 @@ class URDF:
 
         return matrix
 
-    def update_trimesh_scene(self, trimesh_scene, configuration):
-        # TODO: keep track of non-actuated joints
-        if len(configuration) != len(self.robot.joints):
-            raise ValueError(
-                f"Dimensionality of configuration ({len(configuration)}) doesn't match number of actuated joints ({len(self.robot.joints)})."
-            )
+    def update_cfg(self, configuration):
+        """Update joint configuration of URDF; does forward kinematics.
 
-        for j, q in zip(self.robot.joints, configuration):
+        Args:
+            configuration (dict, list[float], tuple[float] or np.ndarray): A mapping from joints or joint names to configuration values, or a list containing a value for each actuated joint.
+
+        Raises:
+            ValueError: Raised if dimensionality of configuration does not match number of actuated joints of URDF model.
+            TypeError: Raised if configuration is neither a dict, list, tuple or np.ndarray.
+        """
+        joint_cfg = []
+
+        # TODO: keep track of non-actuated joints
+        if isinstance(configuration, dict):
+            for joint in configuration:
+                if isinstance(joint, six.string_types):
+                    joint_cfg.append((self._joint_map[joint], configuration[joint]))
+                elif isinstance(joint, Joint):
+                    # TODO: Joint is not hashable; so this branch will not succeed
+                    joint_cfg.append((joint, configuration[joint]))
+        elif isinstance(configuration, (list, tuple, np.ndarray)):
+            if len(configuration) != len(self.robot.joints):
+                raise ValueError(
+                    f"Dimensionality of configuration ({len(configuration)}) doesn't match number of actuated joints ({len(self.robot.joints)})."
+                )
+            for joint, value in zip(self.robot.joints, configuration):
+                joint_cfg.append((joint, value))
+        else:
+            raise TypeError("Invalid type for configuration")
+
+        for j, q in joint_cfg:
             matrix = self._forward_kinematics_joint(j, q=q)
 
-            trimesh_scene.graph.update(
-                frame_from=j.parent, frame_to=j.child, matrix=matrix
-            )
+            if self._scene is not None:
+                self._scene.graph.update(
+                    frame_from=j.parent, frame_to=j.child, matrix=matrix
+                )
+            if self._scene_collision is not None:
+                self._scene_collision.graph.update(
+                    frame_from=j.parent, frame_to=j.child, matrix=matrix
+                )
+
+    def get_transform(self, frame_to, frame_from=None, collision_geometry=False):
+        """Get the transform from one frame to another.
+
+        Args:
+            frame_to (str): Node name.
+            frame_from (str, optional): Node name. If None it will be set to self.base_frame. Defaults to None.
+            collision_geometry (bool, optional): Whether to use the collision geometry scene graph (instead of the visual geometry). Defaults to False.
+
+        Raises:
+            ValueError: Raised if scene graph wasn't constructed during intialization.
+
+        Returns:
+            (4, 4) float: Homogeneous transformation matrix
+        """
+        if collision_geometry:
+            if self._scene_collision is None:
+                raise ValueError(
+                    "No collision scene available. Use build_collision_scene_graph=True during loading."
+                )
+            else:
+                return self._scene_collision.graph.get(
+                    frame_to=frame_to, frame_from=frame_from
+                )[0]
+        else:
+            if self._scene is None:
+                raise ValueError(
+                    "No scene available. Use build_scene_graph=True during loading."
+                )
+            else:
+                return self._scene.graph.get(frame_to=frame_to, frame_from=frame_from)[
+                    0
+                ]
 
     def _add_visual_to_scene(self, s, v, link_name, load_geometry=True):
         origin = v.origin if v.origin is not None else np.eye(4)
