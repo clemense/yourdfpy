@@ -660,9 +660,10 @@ class URDF:
 
         if joint.type == "revolute":
             matrix = origin @ tra.rotation_matrix(q, joint.axis)
-        elif joint.type == "prismatic":
+        elif joint.type == "prismatic" or joint.type == "continuous":
             matrix = origin @ tra.translation_matrix(q * joint.axis)
         else:
+            # this includes: floating, planar, fixed
             matrix = origin
 
         return matrix
