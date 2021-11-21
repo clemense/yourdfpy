@@ -110,6 +110,9 @@ rm -rf build/
 git gui # commit something?
 git tag v<semver>
 git push origin main
+git push origin <tag_name>
+
+# This should not be needed, since travis-ci does the pypi deployment
 python setup.py bdist_wheel
 twine upload -r testpypi dist/*
 
