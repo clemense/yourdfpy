@@ -1,0 +1,18 @@
+language: python
+sudo: required
+dist: xenial
+
+python:
+- '3.6'
+- '3.7'
+- '3.8'
+
+install:
+- pip install .
+- pip install pytest pytest-cov coveralls
+
+script:
+- pytest --cov=urdfpy tests
+
+after_success:
+- coveralls || true
