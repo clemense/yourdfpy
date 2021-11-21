@@ -33,7 +33,8 @@ pip install yourdfpy
 
 <details>
 <summary>Click to expand code listing that produces the above table entries.</summary>
-```
+
+```python
 robot_assets = ['robot-assets/urdfs/robots/barret_hand/bhand_model.URDF', 'robot-assets/urdfs/robots/robotiq_gripper/robotiq_arg85_description.URDF', 'robot-assets/urdfs/robots/anymal/anymal.urdf', 'robot-assets/urdfs/robots/franka_panda/panda.urdf', 'robot-assets/urdfs/robots/ginger_robot/gingerurdf.urdf', 'robot-assets/urdfs/robots/halodi/eve_r3.urdf', 'robot-assets/urdfs/robots/kinova/kinova.urdf', 'robot-assets/urdfs/robots/kuka_iiwa/model.urdf', 'robot-assets/urdfs/robots/pr2/pr2.urdf', 'robot-assets/urdfs/robots/ur10/ur10_robot.urdf', 'robot-assets/urdfs/robots/ur5/ur5_gripper.urdf', 'robot-assets/urdfs/robots/yumi/yumi.urdf']
 
 import urdfpy
@@ -72,6 +73,7 @@ urdfpy_fnames = [x for x, y in load_urdfs(robot_assets, urdfpy.URDF.load).items(
 urdfparser_fnames = [x for x, y in load_urdfs(robot_assets, urdf_parser_py.urdf.URDF.from_xml_file).items() if y is not None]
 %timeit load_urdfs(urdfparser_fnames, functools.partial(yourdfpy.URDF.load, load_meshes=False, generate_scene_graph=False))
 ```
+
 </details>
 
 <!--
