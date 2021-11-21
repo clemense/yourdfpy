@@ -10,8 +10,8 @@ Yourdfpy is a simpler and easier-to-use library for loading, manipulating, valid
 * [License](license)
 * [Authors](authors)
 * [Changelog](changelog)
+* [API](api/index)
 * [Module Reference](api/modules)
-
 
 ## Indices and tables
 
