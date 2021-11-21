@@ -4,3 +4,7 @@
 # sphinx_rtd_theme
 recommonmark
 sphinx>=3.2.1
+sphinx_rtd_theme
+lxml
+trimesh>=3.9.32
+numpy

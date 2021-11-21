@@ -1,4 +1,5 @@
 [![Build Status](https://app.travis-ci.com/clemense/yourdfpy.svg?branch=main)](https://app.travis-ci.com/clemense/yourdfpy.svg?branch=main)
+[![Documentation Status](https://readthedocs.org/projects/yourdfpy/badge/?version=latest)](https://yourdfpy.readthedocs.io/en/latest/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/github/clemense/yourdfpy/badge.svg?branch=main)](https://coveralls.io/github/clemense/yourdfpy?branch=main)
 [![PyPI version](https://badge.fury.io/py/yourdfpy.svg)](https://badge.fury.io/py/yourdfpy)
 
