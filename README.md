@@ -32,8 +32,8 @@ pip install yourdfpy
 |                                  Test on 6 URDF files on which `urdf_parser_py` succeeds |                                           |                         2.6 ms                          |       3.8 ms       |
 
 <details>
-<summary>Click to expand code listing that produce the above table entries.</summary>
-```python
+<summary>Click to expand code listing that produces the above table entries.</summary>
+```
 robot_assets = ['robot-assets/urdfs/robots/barret_hand/bhand_model.URDF', 'robot-assets/urdfs/robots/robotiq_gripper/robotiq_arg85_description.URDF', 'robot-assets/urdfs/robots/anymal/anymal.urdf', 'robot-assets/urdfs/robots/franka_panda/panda.urdf', 'robot-assets/urdfs/robots/ginger_robot/gingerurdf.urdf', 'robot-assets/urdfs/robots/halodi/eve_r3.urdf', 'robot-assets/urdfs/robots/kinova/kinova.urdf', 'robot-assets/urdfs/robots/kuka_iiwa/model.urdf', 'robot-assets/urdfs/robots/pr2/pr2.urdf', 'robot-assets/urdfs/robots/ur10/ur10_robot.urdf', 'robot-assets/urdfs/robots/ur5/ur5_gripper.urdf', 'robot-assets/urdfs/robots/yumi/yumi.urdf']
 
 import urdfpy
