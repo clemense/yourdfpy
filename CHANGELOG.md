@@ -1,9 +1,16 @@
 # Changelog
 
-## Version 0.0. (development)
+## Version 0.0.24 (development)
 - Added pytests
 - Separate visual and collision scene
 - Rename constructor's parameter `create_scene_graph` to `build_scene_graph`
+- Added ROS validation rules
+- Rename `update_trimesh_scene` to `update_cfg`, change arguments
+- Add `get_transform` function
+- Rename `get_default_configuration` to `get_default_cfg`
+- Proper handling of `mimic` joints
+- New members for `actuated_joints`
+- New `base_link` property
 
 ## Version 0.0.23 (development)
 - The Great YOURDFPY Steering Committee (G.Y.S.C.) decides to jump as many version numbers ahead as needed to pass urdfpy

@@ -17,7 +17,7 @@ pip install yourdfpy
 
 
 ## But why another one?!?
-"Why are you wasting not only your but also our time?" you might ask. Fair point. There is already [urdfpy](https://github.com/mmatl/urdfpy) and [urdf_parser_py](https://github.com/ros/urdf_parser_py) that deal with URDFs. Unfortunately, none of the existing solutions allows customizable URDF parsing that is fully independent of validation and mesh loading. Dealing with filenames can be cumbersome, outdated dependencies, open bug reports, and limited flexibility when it comes to serialization are other disadvantages. As shown in the table below, **yourdfpy** is the most robust one when it comes to loading URDFs in the wild.
+`Why are you wasting not only your but also our time?` you might ask. Fair point. There are already [urdfpy](https://github.com/mmatl/urdfpy) and [urdf_parser_py](https://github.com/ros/urdf_parser_py) that deal with URDFs. Unfortunately, none of these solutions allow customizable URDF parsing that is fully independent of validation and mesh loading. Dealing with filenames, outdated dependencies, open bug reports, and limited flexibility when it comes to serialization are other disadvantages. As shown in the table below, **yourdfpy** is the most robust one when it comes to loading URDFs in the wild.
 
 ![Example URDFs](https://github.com/clemense/yourdfpy/blob/main/docs/_static/urdf_examples.jpg?raw=true)
 
