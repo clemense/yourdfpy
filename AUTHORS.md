@@ -1,3 +1,3 @@
 # Contributors
 
-* Clemens Eppner <clemens.eppner@gmail.com>
+* [Clemens Eppner](https://github.com/clemense/)
