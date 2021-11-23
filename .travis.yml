@@ -1,5 +1,4 @@
 language: python
-sudo: required
 dist: xenial
 
 python:
@@ -12,7 +11,7 @@ install:
 - pip install pytest pytest-cov coveralls
 
 script:
-- pytest --cov=urdfpy tests
+- pytest --cov=yourdfpy tests
 
 after_success:
 - coveralls || true
