@@ -1,4 +1,5 @@
 import os
+from numpy.lib.npyio import load
 import six
 import copy
 import random
@@ -993,24 +994,21 @@ class URDF:
         The result is a set of URDF models which together compose the original URDF.
 
         Args:
-            joint_type (str, optional): [description]. Defaults to "floating".
+            joint_type (str, or list[str], optional): Type of joint to use for splitting. Defaults to "floating".
+            **kwargs: Arguments delegated to URDF constructor of new URDF models.
 
         Returns:
             list[(np.ndarray, yourdfpy.URDF)]: A list of tuples (np.ndarray, yourdfpy.URDF) whereas each homogeneous 4x4 matrix describes the root transformation of the respective URDF model w.r.t. the original URDF.
         """
         root_urdf = URDF(
-            robot=copy.deepcopy(self.robot),
-            **kwargs,
+            robot=copy.deepcopy(self.robot), build_scene_graph=False, load_meshes=False
         )
-        result = [
-            (
-                np.eye(4),
-                root_urdf,
-            )
-        ]
+        result = []
+
+        joint_types = joint_type if isinstance(joint_type, list) else [joint_type]
 
         # find all relevant joints
-        joint_names = [j.name for j in self.robot.joints if j.type == joint_type]
+        joint_names = [j.name for j in self.robot.joints if j.type in joint_types]
         for joint_name in joint_names:
             root_link = self.link_map[self.joint_map[joint_name].child]
             new_robot = self._create_subrobot(
@@ -1027,9 +1025,9 @@ class URDF:
 
             # remove links and joints from root robot
             for j in new_robot.joints:
-                root_urdf.robot.joints.remove(result[0][-1].joint_map[j.name])
+                root_urdf.robot.joints.remove(root_urdf.joint_map[j.name])
             for l in new_robot.links:
-                root_urdf.robot.links.remove(result[0][-1].link_map[l.name])
+                root_urdf.robot.links.remove(root_urdf.link_map[l.name])
 
             # remove joint that connects root urdf to root_link
             if root_link.name in [j.child for j in root_urdf.robot.joints]:
@@ -1038,6 +1036,8 @@ class URDF:
                         [j.child for j in root_urdf.robot.joints].index(root_link.name)
                     ]
                 )
+
+        result.insert(0, (np.eye(4), URDF(robot=root_urdf.robot, **kwargs)))
 
         return result
 
