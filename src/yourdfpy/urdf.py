@@ -932,8 +932,7 @@ class URDF:
                 index = config_names.index(j.mimic.joint)
                 config[i][0] = config[index][0] * j.mimic.multiplier + j.mimic.offset
 
-        # TODO: Creating an ndarray from ragged nested sequences (which is a list-or-tuple of lists-or-tuples-or ndarrays with different lengths or shapes) is deprecated. If you meant to do this, you must specify 'dtype=object' when creating the ndarray
-        return np.array(config).flatten()
+        return np.concatenate(config)
 
     def _create_scene(self, use_collision_geometry=False, load_geometry=True):
         s = trimesh.scene.Scene(base_frame=self._base_link)

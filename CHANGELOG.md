@@ -1,5 +1,8 @@
 # Changelog
 
+## Next Version (development)
+- Bugfix: `get_default_cfg` returns flattened array
+
 ## Version 0.0.24 (development)
 - Added pytests
 - Separate visual and collision scene
