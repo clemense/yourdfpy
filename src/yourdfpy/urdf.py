@@ -932,6 +932,8 @@ class URDF:
                 index = config_names.index(j.mimic.joint)
                 config[i][0] = config[index][0] * j.mimic.multiplier + j.mimic.offset
 
+        if len(config) == 0:
+            return np.array(dtype=np.float64)
         return np.concatenate(config)
 
     def _create_scene(self, use_collision_geometry=False, load_geometry=True):
@@ -999,7 +1001,7 @@ class URDF:
         root_urdf = URDF(
             robot=copy.deepcopy(self.robot),
             load_meshes=False,
-            generate_scene_graph=False,
+            build_scene_graph=False,
         )
         result = [
             (
@@ -1020,9 +1022,7 @@ class URDF:
             result.append(
                 (
                     self._scene.graph.get(root_link.name)[0],
-                    URDF(
-                        robot=new_robot, load_meshes=False, generate_scene_graph=False
-                    ),
+                    URDF(robot=new_robot, load_meshes=False, build_scene_graph=False),
                 )
             )
 

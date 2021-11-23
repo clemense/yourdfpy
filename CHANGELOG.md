@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.0.26 (development)
+- Bugfix: rename `generate_scene_graph` parameter
+- Bugfix of bugfix of previous version, which introduced a new bug
+
 ## Version 0.0.25 (development)
 - Bugfix: `get_default_cfg` returns flattened array
 

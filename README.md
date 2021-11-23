@@ -1,4 +1,4 @@
-[![Build Status](https://app.travis-ci.com/clemense/yourdfpy.svg?branch=main)](https://app.travis-ci.com/clemense/yourdfpy.svg?branch=main)
+[![Build Status](https://app.travis-ci.com/clemense/yourdfpy.svg?branch=main)](https://app.travis-ci.com/clemense/yourdfpy)
 [![Documentation Status](https://readthedocs.org/projects/yourdfpy/badge/?version=latest)](https://yourdfpy.readthedocs.io/en/latest/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/github/clemense/yourdfpy/badge.svg?branch=main)](https://coveralls.io/github/clemense/yourdfpy?branch=main)
 [![PyPI version](https://badge.fury.io/py/yourdfpy.svg)](https://badge.fury.io/py/yourdfpy)
@@ -66,7 +66,7 @@ load_urdfs(robot_assets, yourdfpy.URDF.load)
 %timeit load_urdfs(robot_assets, urdfpy.URDF.load)
 %timeit load_urdfs(robot_assets, urdf_parser_py.urdf.URDF.load)
 %timeit load_urdfs(robot_assets, yourdfpy.URDF.load)
-%timeit load_urdfs(robot_assets, partial(yourdfpy.URDF.load, load_meshes=False, generate_scene_graph=False))
+%timeit load_urdfs(robot_assets, partial(yourdfpy.URDF.load, load_meshes=False, build_scene_graph=False))
 
 # fairer comparison with yourdfpy
 urdfpy_fnames = [x for x, y in load_urdfs(robot_assets, urdfpy.URDF.load).items() if y is not None]
@@ -74,7 +74,7 @@ urdfpy_fnames = [x for x, y in load_urdfs(robot_assets, urdfpy.URDF.load).items(
 
 # fairer comparison with urdf_parser_py
 urdfparser_fnames = [x for x, y in load_urdfs(robot_assets, urdf_parser_py.urdf.URDF.from_xml_file).items() if y is not None]
-%timeit load_urdfs(urdfparser_fnames, functools.partial(yourdfpy.URDF.load, load_meshes=False, generate_scene_graph=False))
+%timeit load_urdfs(urdfparser_fnames, functools.partial(yourdfpy.URDF.load, load_meshes=False, build_scene_graph=False))
 ```
 
 </details>
