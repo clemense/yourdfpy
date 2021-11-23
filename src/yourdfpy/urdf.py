@@ -933,7 +933,7 @@ class URDF:
                 config[i][0] = config[index][0] * j.mimic.multiplier + j.mimic.offset
 
         if len(config) == 0:
-            return np.array(dtype=np.float64)
+            return np.array([], dtype=np.float64)
         return np.concatenate(config)
 
     def _create_scene(self, use_collision_geometry=False, load_geometry=True):
@@ -988,7 +988,7 @@ class URDF:
 
         return subrobot
 
-    def split_along_joints(self, joint_type="floating"):
+    def split_along_joints(self, joint_type="floating", **kwargs):
         """Split URDF model along a particular joint type.
         The result is a set of URDF models which together compose the original URDF.
 
@@ -1000,8 +1000,7 @@ class URDF:
         """
         root_urdf = URDF(
             robot=copy.deepcopy(self.robot),
-            load_meshes=False,
-            build_scene_graph=False,
+            **kwargs,
         )
         result = [
             (
@@ -1022,7 +1021,7 @@ class URDF:
             result.append(
                 (
                     self._scene.graph.get(root_link.name)[0],
-                    URDF(robot=new_robot, load_meshes=False, build_scene_graph=False),
+                    URDF(robot=new_robot, **kwargs),
                 )
             )
 
