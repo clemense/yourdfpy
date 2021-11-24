@@ -20,7 +20,6 @@ deploy:
   provider: pypi
   username: "__token__"
   skip_existing: true
-  skip_cleanup: true
   on:
     tags: true
     branch: main

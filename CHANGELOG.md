@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 0.0.27 (development)
+## Version 0.0.27-28 (development)
 - Bugfix in travis deployment pipeline
 
 ## Version 0.0.26 (development)
