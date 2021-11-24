@@ -3,6 +3,9 @@
 ## Version 0.0.26 (development)
 - Bugfix: rename `generate_scene_graph` parameter
 - Bugfix of bugfix of previous version, which introduced a new bug
+- Bugfix: root URDF result of `split_along_joints`  (scene was not in sync with model)
+- Add params to `split_along_joints`
+- Bugfix: `parse_inertia` resulted in wrong matrix dtype
 
 ## Version 0.0.25 (development)
 - Bugfix: `get_default_cfg` returns flattened array

@@ -1482,7 +1482,8 @@ class URDF:
                     x.get("iyz", default=0.0),
                     x.get("izz", default=1.0),
                 ],
-            ]
+            ],
+            dtype=np.float64,
         )
 
     def _write_inertia(self, xml_parent, inertia):
