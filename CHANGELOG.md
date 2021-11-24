@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.27 (development)
+- Bugfix in travis deployment pipeline
+
 ## Version 0.0.26 (development)
 - Bugfix: rename `generate_scene_graph` parameter
 - Bugfix of bugfix of previous version, which introduced a new bug
