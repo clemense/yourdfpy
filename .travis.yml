@@ -7,6 +7,7 @@ python:
 - '3.9'
 
 install:
+- pip install setuptools_scm
 - pip install .
 - pip install pytest pytest-cov coveralls
 
