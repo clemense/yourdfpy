@@ -16,6 +16,9 @@ script:
 after_success:
 - coveralls || true
 
+git:
+  depth: false
+
 deploy:
   provider: pypi
   username: "__token__"
