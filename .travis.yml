@@ -19,10 +19,10 @@ after_success:
 deploy:
   provider: pypi
   username: "__token__"
-  skip_existing: true
+  # skip_existing: true
   on:
     tags: true
-    branch: master
+    branch: main
   password:
     secure: OPwLw/wsbKNQC/vVb0ccXGeujfGpA28ZlQjMaABqGM1aIBNFSkF8gsyE3PQHXU9hksqTDM2I8rXbv302rhpJa3qczcZZ59thdc/xiGMun3nUhnwrlin07Kb3i00qDLgwA6HJ8A119FWVq3NlQPTJ/HD/3R69UT1hnhwcR6npqnsj4J7NVVsvH20EnWzuCREhd7/Hz/vwVYS8qE8ICw9IxqtYUbPBiPaB6J19oI7IyIt8kB6TE0sWIdcAKkzothIMjrFgmupc4fdEmzFqw4J29gczQ1HjOBSSfmD6vk9uXXcxPyXLcCzJRmMUfC7mCVKKXg1SmPOJkmVZYsO74mvgQnexgN1JD3beBA/bxn6LXsiUTKTex5wSXt6i1AzDdNViTr3n2Zhg4eFibkODzk0JEu0dBYnKnJSgmbThzpTt8+/iGvZ7gGYoYvsg6/++BNtYFAXgfiz+SeVurQZ8YGRfcMeBZacnYxVIuBu1JrKw+mdIEcB3q8NXei5DqgRKfrsOP8X80+OfJLSFAhEbneckD8GzZ60wLE/2WPRqiHWVZWYi/U22awNgxeGUJJ1WRGNIXQTfSdI0wWguquvkDzGzMVdGwLpPPt0adzqxelJ4xYgt7ygXQJFyIrUmuZv2Szyn4KqrEHUgc/rxsWUCCDZqAEZtBn323KU9ev8WH5TYfhk=
   distributions: sdist bdist_wheel
