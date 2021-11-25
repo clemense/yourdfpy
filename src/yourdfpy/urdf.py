@@ -498,6 +498,15 @@ class URDF:
         return self._actuated_joints
 
     @property
+    def actuated_dof_indices(self):
+        """List of DOF indices per actuated joint. Can be used to reference configuration.
+
+        Returns:
+            list[list[int]]: List of DOF indices per actuated joint.
+        """
+        return self._actuated_dof_indices
+
+    @property
     def actuated_joint_indices(self):
         """List of indices of all joints that are actuated, i.e., not of type mimic or fixed.
 
@@ -526,13 +535,13 @@ class URDF:
 
     @property
     def num_dofs(self):
-        """Number of degrees of freedom. Depending on the type of the joint, the number of DOFs might vary.
+        """Number of degrees of freedom of actuated joints. Depending on the type of the joint, the number of DOFs might vary.
 
         Returns:
             int: Degrees of freedom.
         """
         total_num_dofs = 0
-        for j in self.robot.joints:
+        for j in self._actuated_joints:
             if j.type in ["revolute", "prismatic", "continuous"]:
                 total_num_dofs += 1
             elif j.type == "floating":
@@ -559,13 +568,13 @@ class URDF:
         """
         config = []
         config_names = []
-        for j in self.robot.joints:
+        for j in self._actuated_joints:
             if j.type == "revolute" or j.type == "prismatic":
                 if j.limit is not None:
                     cfg = [j.limit.lower + 0.5 * (j.limit.upper - j.limit.lower)]
                 else:
                     cfg = [0.0]
-            elif j.type == "continuous" or j.type == "fixed":
+            elif j.type == "continuous":
                 cfg = [0.0]
             elif j.type == "floating":
                 cfg = [0.0] * 6
@@ -665,11 +674,27 @@ class URDF:
     def _update_actuated_joints(self):
         self._actuated_joints = []
         self._actuated_joint_indices = []
+        self._actuated_dof_indices = []
 
+        dof_indices_cnt = 0
         for i, j in enumerate(self.robot.joints):
             if j.mimic is None and j.type != "fixed":
                 self._actuated_joints.append(j)
                 self._actuated_joint_indices.append(i)
+
+                if j.type in ["prismatic", "revolute", "continuous"]:
+                    self._actuated_dof_indices.append([dof_indices_cnt])
+                    dof_indices_cnt += 1
+                elif j.type == "floating":
+                    self._actuated_dof_indices.append(
+                        [dof_indices_cnt, dof_indices_cnt + 1, dof_indices_cnt + 2]
+                    )
+                    dof_indices_cnt += 3
+                elif j.type == "planar":
+                    self._actuated_dof_indices.append(
+                        [dof_indices_cnt, dof_indices_cnt + 1]
+                    )
+                    dof_indices_cnt += 2
 
     def _validate_required_attribute(self, attribute, error_msg, allowed_values=None):
         if attribute is None:
@@ -792,7 +817,7 @@ class URDF:
 
         return link_names[0]
 
-    def _forward_kinematics_joint(self, joint, q=0.0):
+    def _forward_kinematics_joint(self, joint, q=None):
         origin = np.eye(4) if joint.origin is None else joint.origin
 
         if joint.mimic is not None:
@@ -802,10 +827,19 @@ class URDF:
                 + joint.mimic.offset
             )
 
-        if joint.type == "revolute":
-            matrix = origin @ tra.rotation_matrix(q, joint.axis)
-        elif joint.type == "prismatic" or joint.type == "continuous":
-            matrix = origin @ tra.translation_matrix(q * joint.axis)
+        if joint.type in ["revolute", "prismatic", "continuous"]:
+            if q is None:
+                # Use internal cfg vector for forward kinematics
+                q = self.cfg[
+                    self.actuated_dof_indices[
+                        self.actuated_joint_names.index(joint.name)
+                    ]
+                ]
+
+            if joint.type == "prismatic":
+                matrix = origin @ tra.translation_matrix(q * joint.axis)
+            else:
+                matrix = origin @ tra.rotation_matrix(q, joint.axis)
         else:
             # this includes: floating, planar, fixed
             matrix = origin
@@ -852,7 +886,9 @@ class URDF:
             matrix, joint_q = self._forward_kinematics_joint(j, q=q)
 
             # update internal configuration vector - to enable mimic joint mapping
-            self._cfg[self.joint_names.index(j.name)] = joint_q
+            self._cfg[
+                self.actuated_dof_indices[self.actuated_joint_names.index(j.name)]
+            ] = joint_q
 
             if self._scene is not None:
                 self._scene.graph.update(
@@ -965,9 +1001,8 @@ class URDF:
     def _create_scene(self, use_collision_geometry=False, load_geometry=True):
         s = trimesh.scene.Scene(base_frame=self._base_link)
 
-        configuration = self._cfg
-        for j, q in zip(self.robot.joints, configuration):
-            matrix, _ = self._forward_kinematics_joint(j, q=q)
+        for j in self.robot.joints:
+            matrix, _ = self._forward_kinematics_joint(j)
 
             s.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.0.32 (development)
+- Fix `continuous` joint during forward kinematics
+- Introduce DOF indices for actuated joints (to handle planar and floating types)
+
 ## Version 0.0.31 (development)
 - Add `num_dofs`
 - Add `zero_cfg` property
