@@ -420,7 +420,7 @@ class URDF:
         self._create_maps()
         self._update_actuated_joints()
 
-        self._cfg = self.get_default_cfg()
+        self._cfg = self.zero_cfg
 
         if build_scene_graph or build_collision_scene_graph:
             self._base_link = self._determine_base_link()
@@ -523,6 +523,66 @@ class URDF:
             int: Number of actuated joints.
         """
         return len(self.actuated_joints)
+
+    @property
+    def num_dofs(self):
+        """Number of degrees of freedom. Depending on the type of the joint, the number of DOFs might vary.
+
+        Returns:
+            int: Degrees of freedom.
+        """
+        total_num_dofs = 0
+        for j in self.robot.joints:
+            if j.type in ["revolute", "prismatic", "continuous"]:
+                total_num_dofs += 1
+            elif j.type == "floating":
+                total_num_dofs += 6
+            elif j.type == "planar":
+                total_num_dofs += 2
+        return total_num_dofs
+
+    @property
+    def zero_cfg(self):
+        """Return the zero configuration.
+
+        Returns:
+            np.ndarray: The zero configuration.
+        """
+        return np.zeros(self.num_dofs)
+
+    @property
+    def center_cfg(self):
+        """Return center configuration of URDF model by using the average of each joint's limits if present, otherwise zero.
+
+        Returns:
+            (n), float: Default configuration of URDF model.
+        """
+        config = []
+        config_names = []
+        for j in self.robot.joints:
+            if j.type == "revolute" or j.type == "prismatic":
+                if j.limit is not None:
+                    cfg = [j.limit.lower + 0.5 * (j.limit.upper - j.limit.lower)]
+                else:
+                    cfg = [0.0]
+            elif j.type == "continuous" or j.type == "fixed":
+                cfg = [0.0]
+            elif j.type == "floating":
+                cfg = [0.0] * 6
+            elif j.type == "planar":
+                cfg = [0.0] * 2
+
+            config.append(cfg)
+            config_names.append(j.name)
+
+        for i, j in enumerate(self.robot.joints):
+            if j.mimic is not None:
+                index = config_names.index(j.mimic.joint)
+                config[i][0] = config[index][0] * j.mimic.multiplier + j.mimic.offset
+
+        if len(config) == 0:
+            return np.array([], dtype=np.float64)
+        return np.concatenate(config)
 
     @property
     def cfg(self):
@@ -901,41 +961,6 @@ class URDF:
                         parent_node_name=link_name,
                         transform=origin @ new_s.graph.get(name)[0],
                     )
-
-    def get_default_cfg(self):
-        """Return default configuration of URDF model by using the average of each joint's limits if present, otherwise zero.
-
-        Returns:
-            (n), float: Default configuration of URDF model.
-        """
-        config = []
-        config_names = []
-        for j in self.robot.joints:
-            if j.mimic is not None:
-                cfg = [0.0]
-            elif j.type == "revolute" or j.type == "prismatic":
-                if j.limit is not None:
-                    cfg = [j.limit.lower + 0.5 * (j.limit.upper - j.limit.lower)]
-                else:
-                    cfg = [0.0]
-            elif j.type == "continuous" or j.type == "fixed":
-                cfg = [0.0]
-            elif j.type == "floating":
-                cfg = [0.0] * 6
-            elif j.type == "planar":
-                cfg = [0.0] * 2
-
-            config.append(cfg)
-            config_names.append(j.name)
-
-        for i, j in enumerate(self.robot.joints):
-            if j.mimic is not None:
-                index = config_names.index(j.mimic.joint)
-                config[i][0] = config[index][0] * j.mimic.multiplier + j.mimic.offset
-
-        if len(config) == 0:
-            return np.array([], dtype=np.float64)
-        return np.concatenate(config)
 
     def _create_scene(self, use_collision_geometry=False, load_geometry=True):
         s = trimesh.scene.Scene(base_frame=self._base_link)

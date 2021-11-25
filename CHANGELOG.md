@@ -1,6 +1,15 @@
 # Changelog
 
-## Version 0.0.27-29 (development)
+## Version 0.0.31 (development)
+- Add `num_dofs`
+- Add `zero_cfg` property
+- Change function `get_default_cfg` to property `center_cfg`
+- Initial configuration is now the zero configuration not the center configuration (as previously)
+
+## Version 0.0.30 (development)
+## Version 0.0.29 (development)
+## Version 0.0.28 (development)
+## Version 0.0.27 (development)
 - Bugfix in travis deployment pipeline
 
 ## Version 0.0.26 (development)
