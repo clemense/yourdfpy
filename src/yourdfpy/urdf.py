@@ -972,7 +972,6 @@ class URDF:
                         f"Loading {v.geometry.mesh.filename} as {new_filename}"
                     )
 
-                    print(f"Loading {v.geometry.mesh.filename} as {new_filename}")
                     if force_mesh:
                         new_g = trimesh.load(
                             new_filename, ignore_broken=True, force="mesh"
