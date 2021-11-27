@@ -433,14 +433,18 @@ class URDF:
 
         if build_scene_graph:
             self._scene = self._create_scene(
-                use_collision_geometry=False, load_geometry=load_meshes
+                use_collision_geometry=False,
+                load_geometry=load_meshes,
+                force_mesh=force_mesh,
             )
         else:
             self._scene = None
 
         if build_collision_scene_graph:
             self._scene_collision = self._create_scene(
-                use_collision_geometry=True, load_geometry=load_collision_meshes
+                use_collision_geometry=True,
+                load_geometry=load_collision_meshes,
+                force_mesh=force_mesh,
             )
         else:
             self._scene_collision = None
@@ -968,10 +972,16 @@ class URDF:
                         f"Loading {v.geometry.mesh.filename} as {new_filename}"
                     )
 
+                    print(f"Loading {v.geometry.mesh.filename} as {new_filename}")
                     if force_mesh:
                         new_g = trimesh.load(
                             new_filename, ignore_broken=True, force="mesh"
                         )
+
+                        # add original filename
+                        if "file_path" not in new_g.metadata:
+                            new_g.metadata["file_path"] = os.path.abspath(new_filename)
+                            new_g.metadata["file_name"] = os.path.basename(new_filename)
 
                         new_s = trimesh.Scene()
                         new_s.add_geometry(new_g)
