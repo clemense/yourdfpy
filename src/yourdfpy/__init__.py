@@ -19,6 +19,7 @@ from .urdf import (
     Actuator,
     Box,
     Calibration,
+    Collision,
     Color,
     Cylinder,
     Geometry,

@@ -400,6 +400,7 @@ class URDF:
         filename_handler=None,
         mesh_dir: str = "",
         force_mesh: bool = False,
+        force_collision_mesh: bool = False,
     ):
         """A URDF model.
 
@@ -412,6 +413,7 @@ class URDF:
             filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
             mesh_dir (str, optional): A root directory used for loading meshes. Defaults to "".
             force_mesh (bool, optional): Each loaded geometry will be concatenated into a single one (instead of being turned into a graph; in case the underlying file contains multiple geometries). This might loose texture information but the resulting scene graph will be smaller. Defaults to False.
+            force_collision_mesh (bool, optional): Same as force_mesh, but for collision scene. Defaults to False.
         """
         if filename_handler is None:
             self._filename_handler = partial(filename_handler_magic, dir=mesh_dir)
@@ -444,7 +446,7 @@ class URDF:
             self._scene_collision = self._create_scene(
                 use_collision_geometry=True,
                 load_geometry=load_collision_meshes,
-                force_mesh=force_mesh,
+                force_mesh=force_collision_mesh,
             )
         else:
             self._scene_collision = None
@@ -725,6 +727,7 @@ class URDF:
             **filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
             **mesh_dir (str, optional): A root directory used for loading meshes. Defaults to "".
             **force_mesh (bool, optional): Each loaded geometry will be concatenated into a single one (instead of being turned into a graph; in case the underlying file contains multiple geometries). This might loose texture information but the resulting scene graph will be smaller. Defaults to False.
+            **force_collision_mesh (bool, optional): Same as force_mesh, but for collision scene. Defaults to False.
 
         Raises:
             ValueError: If filename does not exist.

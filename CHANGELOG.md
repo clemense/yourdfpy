@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.0.34 (development)
+- Fix missing `Collision` exposure in init.py
+- Add `force_collision_mesh`
+
 ## Version 0.0.33 (development)
 - Add `force_mesh` to constructor; allows loading mesh files as single meshes instead of turning them into graphs (since trimesh can't deal with meshes with multiple textures)
 
