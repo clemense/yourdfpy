@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.35 (development)
+- Add `force_single_geometry_per_link` feature: similar to `collision_mesh` in urdfpy; will concatenate all meshes in a single link and only create one node in the scene graph. This is the new default for loading the collision scene.
+
 ## Version 0.0.34 (development)
 - Fix missing `Collision` exposure in init.py
 - Add `force_collision_mesh`

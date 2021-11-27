@@ -2,7 +2,6 @@ import os
 from numpy.lib.npyio import load
 import six
 import copy
-import random
 import logging
 import numpy as np
 from dataclasses import dataclass, field, is_dataclass
@@ -400,7 +399,7 @@ class URDF:
         filename_handler=None,
         mesh_dir: str = "",
         force_mesh: bool = False,
-        force_collision_mesh: bool = False,
+        force_collision_mesh: bool = True,
     ):
         """A URDF model.
 
@@ -413,7 +412,7 @@ class URDF:
             filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
             mesh_dir (str, optional): A root directory used for loading meshes. Defaults to "".
             force_mesh (bool, optional): Each loaded geometry will be concatenated into a single one (instead of being turned into a graph; in case the underlying file contains multiple geometries). This might loose texture information but the resulting scene graph will be smaller. Defaults to False.
-            force_collision_mesh (bool, optional): Same as force_mesh, but for collision scene. Defaults to False.
+            force_collision_mesh (bool, optional): Same as force_mesh, but for collision scene. Defaults to True.
         """
         if filename_handler is None:
             self._filename_handler = partial(filename_handler_magic, dir=mesh_dir)
@@ -438,6 +437,7 @@ class URDF:
                 use_collision_geometry=False,
                 load_geometry=load_meshes,
                 force_mesh=force_mesh,
+                force_single_geometry_per_link=force_mesh,
             )
         else:
             self._scene = None
@@ -447,6 +447,7 @@ class URDF:
                 use_collision_geometry=True,
                 load_geometry=load_collision_meshes,
                 force_mesh=force_collision_mesh,
+                force_single_geometry_per_link=force_collision_mesh,
             )
         else:
             self._scene_collision = None
@@ -727,7 +728,7 @@ class URDF:
             **filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
             **mesh_dir (str, optional): A root directory used for loading meshes. Defaults to "".
             **force_mesh (bool, optional): Each loaded geometry will be concatenated into a single one (instead of being turned into a graph; in case the underlying file contains multiple geometries). This might loose texture information but the resulting scene graph will be smaller. Defaults to False.
-            **force_collision_mesh (bool, optional): Same as force_mesh, but for collision scene. Defaults to False.
+            **force_collision_mesh (bool, optional): Same as force_mesh, but for collision scene. Defaults to True.
 
         Raises:
             ValueError: If filename does not exist.
@@ -942,88 +943,133 @@ class URDF:
                     0
                 ]
 
-    def _add_visual_to_scene(
-        self, s, v, link_name, load_geometry=True, force_mesh=False
-    ):
-        origin = v.origin if v.origin is not None else np.eye(4)
+    def _link_mesh(self, link, collision_geometry=True):
+        geometries = link.collisions if collision_geometry else link.visuals
 
-        if v.geometry is not None:
-            new_s = None
+        if len(geometries) == 0:
+            return None
 
-            if v.geometry.box is not None:
-                new_s = trimesh.Scene(
-                    [trimesh.creation.box(extents=v.geometry.box.size)]
-                )
-            elif v.geometry.sphere is not None:
-                new_s = trimesh.Scene(
-                    [trimesh.creation.uv_sphere(radius=v.geometry.sphere.radius)]
-                )
-            elif v.geometry.cylinder is not None:
-                new_s = trimesh.Scene(
-                    [
-                        trimesh.creation.cylinder(
-                            radius=v.geometry.cylinder.radius,
-                            height=v.geometry.cylinder.length,
-                        )
-                    ]
-                )
-            elif v.geometry.mesh is not None and load_geometry:
-                new_filename = self._filename_handler(fname=v.geometry.mesh.filename)
+        meshes = []
+        for g in geometries:
+            for m in g.geometry.meshes:
+                m = m.copy()
+                pose = g.origin
+                if g.geometry.mesh is not None:
+                    if g.geometry.mesh.scale is not None:
+                        S = np.eye(4)
+                        S[:3, :3] = np.diag(c.geometry.mesh.scale)
+                        pose = pose.dot(S)
+                m.apply_transform(pose)
+                meshes.append(m)
+        if len(meshes) == 0:
+            return None
+        self._collision_mesh = meshes[0] + meshes[1:]
+        return self._collision_mesh
 
-                if os.path.isfile(new_filename):
-                    _logger.debug(
-                        f"Loading {v.geometry.mesh.filename} as {new_filename}"
+    def _geometry2trimeshscene(self, geometry, load_file, force_mesh):
+        new_s = None
+        if geometry.box is not None:
+            new_s = trimesh.Scene([trimesh.creation.box(extents=geometry.box.size)])
+        elif geometry.sphere is not None:
+            new_s = trimesh.Scene(
+                [trimesh.creation.uv_sphere(radius=geometry.sphere.radius)]
+            )
+        elif geometry.cylinder is not None:
+            new_s = trimesh.Scene(
+                [
+                    trimesh.creation.cylinder(
+                        radius=geometry.cylinder.radius,
+                        height=geometry.cylinder.length,
                     )
+                ]
+            )
+        elif geometry.mesh is not None and load_file:
+            new_filename = self._filename_handler(fname=geometry.mesh.filename)
 
-                    if force_mesh:
-                        new_g = trimesh.load(
-                            new_filename, ignore_broken=True, force="mesh"
-                        )
+            if os.path.isfile(new_filename):
+                _logger.debug(f"Loading {geometry.mesh.filename} as {new_filename}")
 
-                        # add original filename
-                        if "file_path" not in new_g.metadata:
-                            new_g.metadata["file_path"] = os.path.abspath(new_filename)
-                            new_g.metadata["file_name"] = os.path.basename(new_filename)
+                if force_mesh:
+                    new_g = trimesh.load(new_filename, ignore_broken=True, force="mesh")
 
-                        new_s = trimesh.Scene()
-                        new_s.add_geometry(new_g)
-                    else:
-                        new_s = trimesh.load(
-                            new_filename, ignore_broken=True, force="scene"
-                        )
+                    # add original filename
+                    if "file_path" not in new_g.metadata:
+                        new_g.metadata["file_path"] = os.path.abspath(new_filename)
+                        new_g.metadata["file_name"] = os.path.basename(new_filename)
 
-                    # scale mesh appropriately
-                    if v.geometry.mesh.scale is not None:
-                        if isinstance(v.geometry.mesh.scale, float):
-                            new_s = new_s.scaled(v.geometry.mesh.scale)
-                        elif isinstance(v.geometry.mesh.scale, np.ndarray):
-                            if not np.all(
-                                v.geometry.mesh.scale == v.geometry.mesh.scale[0]
-                            ):
-                                _logger.warn(
-                                    f"Warning: Can't scale axis independently, will use the first entry of '{v.geometry.mesh.scale}'"
-                                )
-                            new_s = new_s.scaled(v.geometry.mesh.scale[0])
-                        else:
-                            _logger.warn(
-                                f"Warning: Can't interpret scale '{v.geometry.mesh.scale}'"
-                            )
-                    # except Exception as e:
-                    #     print(e)
-                    #     pass
+                    new_s = trimesh.Scene()
+                    new_s.add_geometry(new_g)
                 else:
-                    _logger.warn(f"Can't find {new_filename}")
-
-            if new_s is not None:
-                for name, geom in new_s.geometry.items():
-                    s.add_geometry(
-                        geometry=geom,
-                        parent_node_name=link_name,
-                        transform=origin @ new_s.graph.get(name)[0],
+                    new_s = trimesh.load(
+                        new_filename, ignore_broken=True, force="scene"
                     )
+
+                # scale mesh appropriately
+                if geometry.mesh.scale is not None:
+                    if isinstance(geometry.mesh.scale, float):
+                        new_s = new_s.scaled(geometry.mesh.scale)
+                    elif isinstance(geometry.mesh.scale, np.ndarray):
+                        if not np.all(geometry.mesh.scale == geometry.mesh.scale[0]):
+                            _logger.warn(
+                                f"Warning: Can't scale axis independently, will use the first entry of '{geometry.mesh.scale}'"
+                            )
+                        new_s = new_s.scaled(geometry.mesh.scale[0])
+                    else:
+                        _logger.warn(
+                            f"Warning: Can't interpret scale '{geometry.mesh.scale}'"
+                        )
+            else:
+                _logger.warn(f"Can't find {new_filename}")
+        return new_s
+
+    def _add_geometries_to_scene(
+        self,
+        s,
+        geometries,
+        link_name,
+        load_geometry,
+        force_mesh,
+        force_single_geometry,
+    ):
+        if force_single_geometry:
+            tmp_scene = trimesh.Scene(base_frame=link_name)
+
+        for v in geometries:
+            if v.geometry is not None:
+                new_s = self._geometry2trimeshscene(
+                    geometry=v.geometry, load_file=load_geometry, force_mesh=force_mesh
+                )
+                if new_s is not None:
+                    origin = v.origin if v.origin is not None else np.eye(4)
+
+                    if force_single_geometry:
+                        for name, geom in new_s.geometry.items():
+                            tmp_scene.add_geometry(
+                                geometry=geom,
+                                parent_node_name=link_name,
+                                transform=origin @ new_s.graph.get(name)[0],
+                            )
+                    else:
+                        for name, geom in new_s.geometry.items():
+                            s.add_geometry(
+                                geometry=geom,
+                                parent_node_name=link_name,
+                                transform=origin @ new_s.graph.get(name)[0],
+                            )
+
+        if force_single_geometry and len(tmp_scene.geometry) > 0:
+            s.add_geometry(
+                geometry=tmp_scene.dump(concatenate=True),
+                parent_node_name=link_name,
+                transform=np.eye(4),
+            )
 
     def _create_scene(
-        self, use_collision_geometry=False, load_geometry=True, force_mesh=False
+        self,
+        use_collision_geometry=False,
+        load_geometry=True,
+        force_mesh=False,
+        force_single_geometry_per_link=False,
     ):
         s = trimesh.scene.Scene(base_frame=self._base_link)
 
@@ -1036,14 +1082,14 @@ class URDF:
             s.graph.nodes.add(l.name)
 
             meshes = l.collisions if use_collision_geometry else l.visuals
-            for m in meshes:
-                self._add_visual_to_scene(
-                    s,
-                    m,
-                    link_name=l.name,
-                    load_geometry=load_geometry,
-                    force_mesh=force_mesh,
-                )
+            self._add_geometries_to_scene(
+                s,
+                geometries=meshes,
+                link_name=l.name,
+                load_geometry=load_geometry,
+                force_mesh=force_mesh,
+                force_single_geometry=force_single_geometry_per_link,
+            )
 
         return s
 
