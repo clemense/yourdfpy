@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.33 (development)
+- Add `force_mesh` to constructor; allows loading mesh files as single meshes instead of turning them into graphs (since trimesh can't deal with meshes with multiple textures)
+
 ## Version 0.0.32 (development)
 - Fix `continuous` joint during forward kinematics
 - Introduce DOF indices for actuated joints (to handle planar and floating types)

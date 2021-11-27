@@ -399,6 +399,7 @@ class URDF:
         load_collision_meshes: bool = False,
         filename_handler=None,
         mesh_dir: str = "",
+        force_mesh: bool = False,
     ):
         """A URDF model.
 
@@ -410,6 +411,7 @@ class URDF:
             load_collision_meshes (bool, optional): Whether to load the collision meshes referenced in the <mesh> elements. Defaults to False.
             filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
             mesh_dir (str, optional): A root directory used for loading meshes. Defaults to "".
+            force_mesh (bool, optional): Each loaded geometry will be concatenated into a single one (instead of being turned into a graph; in case the underlying file contains multiple geometries). This might loose texture information but the resulting scene graph will be smaller. Defaults to False.
         """
         if filename_handler is None:
             self._filename_handler = partial(filename_handler_magic, dir=mesh_dir)
@@ -718,6 +720,7 @@ class URDF:
             **load_collision_meshes (bool, optional): Whether to load the collision meshes referenced in the <mesh> elements. Defaults to False.
             **filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
             **mesh_dir (str, optional): A root directory used for loading meshes. Defaults to "".
+            **force_mesh (bool, optional): Each loaded geometry will be concatenated into a single one (instead of being turned into a graph; in case the underlying file contains multiple geometries). This might loose texture information but the resulting scene graph will be smaller. Defaults to False.
 
         Raises:
             ValueError: If filename does not exist.
@@ -932,7 +935,9 @@ class URDF:
                     0
                 ]
 
-    def _add_visual_to_scene(self, s, v, link_name, load_geometry=True):
+    def _add_visual_to_scene(
+        self, s, v, link_name, load_geometry=True, force_mesh=False
+    ):
         origin = v.origin if v.origin is not None else np.eye(4)
 
         if v.geometry is not None:
@@ -962,11 +967,18 @@ class URDF:
                     _logger.debug(
                         f"Loading {v.geometry.mesh.filename} as {new_filename}"
                     )
-                    # try:
-                    # os.path.join(self.mesh_dir, v.geometry.mesh.filename)
-                    new_s = trimesh.load(
-                        new_filename, ignore_broken=True, force="scene"
-                    )
+
+                    if force_mesh:
+                        new_g = trimesh.load(
+                            new_filename, ignore_broken=True, force="mesh"
+                        )
+
+                        new_s = trimesh.Scene()
+                        new_s.add_geometry(new_g)
+                    else:
+                        new_s = trimesh.load(
+                            new_filename, ignore_broken=True, force="scene"
+                        )
 
                     # scale mesh appropriately
                     if v.geometry.mesh.scale is not None:
@@ -998,7 +1010,9 @@ class URDF:
                         transform=origin @ new_s.graph.get(name)[0],
                     )
 
-    def _create_scene(self, use_collision_geometry=False, load_geometry=True):
+    def _create_scene(
+        self, use_collision_geometry=False, load_geometry=True, force_mesh=False
+    ):
         s = trimesh.scene.Scene(base_frame=self._base_link)
 
         for j in self.robot.joints:
@@ -1012,7 +1026,11 @@ class URDF:
             meshes = l.collisions if use_collision_geometry else l.visuals
             for m in meshes:
                 self._add_visual_to_scene(
-                    s, m, link_name=l.name, load_geometry=load_geometry
+                    s,
+                    m,
+                    link_name=l.name,
+                    load_geometry=load_geometry,
+                    force_mesh=force_mesh,
                 )
 
         return s
