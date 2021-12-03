@@ -1741,15 +1741,33 @@ class URDF:
             upper=_str2float(xml_element.get("upper", default=None)),
         )
 
-    def _validate_limit(self, limit):
-        self._validate_required_attribute(
-            limit.effort,
-            error_msg="Tag <limit> of joint is missing attribute 'effort'.",
-        )
+    def _validate_limit(self, limit, type):
+        if type in ["revolute", "prismatic"]:
+            self._validate_required_attribute(
+                limit,
+                error_msg="The <limit> of a (prismatic, revolute) joint is missing.",
+            )
 
-        self._validate_required_attribute(
-            limit.velocity, error_msg="Tag <limit> is missing attribute 'velocity'."
-        )
+            if limit is not None:
+                self._validate_required_attribute(
+                    limit.upper,
+                    error_msg="Tag <limit> of joint is missing attribute 'upper'.",
+                )
+                self._validate_required_attribute(
+                    limit.lower,
+                    error_msg="Tag <limit> of joint is missing attribute 'lower'.",
+                )
+
+        if limit is not None:
+            self._validate_required_attribute(
+                limit.effort,
+                error_msg="Tag <limit> of joint is missing attribute 'effort'.",
+            )
+
+            self._validate_required_attribute(
+                limit.velocity,
+                error_msg="Tag <limit> of joint is missing attribute 'velocity'.",
+            )
 
     def _write_limit(self, xml_parent, limit):
         if limit is None:
@@ -1845,13 +1863,7 @@ class URDF:
             error_msg=f"The <child> of a <joint> is missing.",
         )
 
-        if joint.type in ["revolute", "prismatic"]:
-            self._validate_required_attribute(
-                joint.limit,
-                error_msg="The <limit> of a (prismatic, revolute) joint is missing.",
-            )
-
-            self._validate_limit(joint.limit)
+        self._validate_limit(joint.limit, type=joint.type)
 
     def _write_joint(self, xml_parent, joint):
         xml_element = etree.SubElement(
