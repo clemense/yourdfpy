@@ -2,6 +2,7 @@
 
 ## Version 0.0.36 (development)
 - Fix validation of JointLimit
+- Add Dynamics to __init__.py
  
 ## Version 0.0.35 (development)
 - Add `force_single_geometry_per_link` feature: similar to `collision_mesh` in urdfpy; will concatenate all meshes in a single link and only create one node in the scene graph. This is the new default for loading the collision scene.

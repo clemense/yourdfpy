@@ -22,6 +22,7 @@ from .urdf import (
     Collision,
     Color,
     Cylinder,
+    Dynamics,
     Geometry,
     Inertial,
     Joint,
