@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.0.37 (development)
+- Use visual/collision name property as geometry name for scene graph
+- Write visual/collision name property to URDF
+
 ## Version 0.0.36 (development)
 - Fix validation of JointLimit
 - Add Dynamics to __init__.py

@@ -1580,7 +1580,12 @@ class URDF:
         self._validate_geometry(visual.geometry)
 
     def _write_visual(self, xml_parent, visual):
-        xml_element = etree.SubElement(xml_parent, "visual")
+        attrib = {"name": visual.name} if visual.name is not None else {}
+        xml_element = etree.SubElement(
+            xml_parent,
+            "visual",
+            attrib=attrib,
+        )
 
         self._write_geometry(xml_element, visual.geometry)
         self._write_origin(xml_element, visual.origin)
@@ -1598,7 +1603,12 @@ class URDF:
         self._validate_geometry(collision.geometry)
 
     def _write_collision(self, xml_parent, collision):
-        xml_element = etree.SubElement(xml_parent, "collision")
+        attrib = {"name": collision.name} if collision.name is not None else {}
+        xml_element = etree.SubElement(
+            xml_parent,
+            "collision",
+            attrib=attrib,
+        )
 
         self._write_geometry(xml_element, collision.geometry)
         self._write_origin(xml_element, collision.origin)
