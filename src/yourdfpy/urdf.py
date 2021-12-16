@@ -1034,8 +1034,13 @@ class URDF:
         if force_single_geometry:
             tmp_scene = trimesh.Scene(base_frame=link_name)
 
+        first_geom_name = None
+
         for v in geometries:
             if v.geometry is not None:
+                if first_geom_name is None:
+                    first_geom_name = v.name
+
                 new_s = self._geometry2trimeshscene(
                     geometry=v.geometry, load_file=load_geometry, force_mesh=force_mesh
                 )
@@ -1046,6 +1051,7 @@ class URDF:
                         for name, geom in new_s.geometry.items():
                             tmp_scene.add_geometry(
                                 geometry=geom,
+                                geom_name=v.name,
                                 parent_node_name=link_name,
                                 transform=origin @ new_s.graph.get(name)[0],
                             )
@@ -1053,6 +1059,7 @@ class URDF:
                         for name, geom in new_s.geometry.items():
                             s.add_geometry(
                                 geometry=geom,
+                                geom_name=v.name,
                                 parent_node_name=link_name,
                                 transform=origin @ new_s.graph.get(name)[0],
                             )
@@ -1060,6 +1067,7 @@ class URDF:
         if force_single_geometry and len(tmp_scene.geometry) > 0:
             s.add_geometry(
                 geometry=tmp_scene.dump(concatenate=True),
+                geom_name=first_geom_name,
                 parent_node_name=link_name,
                 transform=np.eye(4),
             )
