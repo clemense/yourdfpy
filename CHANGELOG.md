@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.38 (development)
+- Change namespace of filename handlers
+
 ## Version 0.0.37 (development)
 - Use visual/collision name property as geometry name for scene graph
 - Write visual/collision name property to URDF
