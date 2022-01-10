@@ -355,7 +355,7 @@ def filename_handler_meta(fname, filename_handlers):
         _logger.debug(f"Checking filename: {candidate_fname}")
         if os.path.isfile(candidate_fname):
             return candidate_fname
-    _logger.warn(f"Unable to resolve filename: {fname}")
+    _logger.warning(f"Unable to resolve filename: {fname}")
     return fname
 
 
@@ -1010,16 +1010,16 @@ class URDF:
                         new_s = new_s.scaled(geometry.mesh.scale)
                     elif isinstance(geometry.mesh.scale, np.ndarray):
                         if not np.all(geometry.mesh.scale == geometry.mesh.scale[0]):
-                            _logger.warn(
+                            _logger.warning(
                                 f"Warning: Can't scale axis independently, will use the first entry of '{geometry.mesh.scale}'"
                             )
                         new_s = new_s.scaled(geometry.mesh.scale[0])
                     else:
-                        _logger.warn(
+                        _logger.warning(
                             f"Warning: Can't interpret scale '{geometry.mesh.scale}'"
                         )
             else:
-                _logger.warn(f"Can't find {new_filename}")
+                _logger.warning(f"Can't find {new_filename}")
         return new_s
 
     def _add_geometries_to_scene(

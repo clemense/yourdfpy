@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.39 (development)
+- Fix mimic joint issue
+
 ## Version 0.0.38 (development)
 - Change namespace of filename handlers
 
