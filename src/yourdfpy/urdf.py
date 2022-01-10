@@ -832,7 +832,7 @@ class URDF:
         origin = np.eye(4) if joint.origin is None else joint.origin
 
         if joint.mimic is not None:
-            mimic_joint_index = self.joint_names.index(joint.mimic.joint)
+            mimic_joint_index = self.actuated_joint_names.index(joint.mimic.joint)
             q = (
                 self._cfg[mimic_joint_index] * joint.mimic.multiplier
                 + joint.mimic.offset
