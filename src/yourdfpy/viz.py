@@ -88,7 +88,13 @@ def main(args):
     """
     args = parse_args(args)
     setup_logging(args.loglevel)
-    urdf_model = URDF.load(args.input)
+
+    if args.collision:
+        urdf_model = URDF.load(
+            args.input, build_collision_scene_graph=True, load_collision_meshes=True
+        )
+    else:
+        urdf_model = URDF.load(args.input)
     urdf_model.show(collision_geometry=args.collision)
 
 

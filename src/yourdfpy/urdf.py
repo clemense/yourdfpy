@@ -1004,6 +1004,13 @@ class URDF:
                         new_filename, ignore_broken=True, force="scene"
                     )
 
+                    if "file_path" in new_s.metadata:
+                        for i, (_, geom) in enumerate(new_s.geometry.items()):
+                            if "file_path" not in geom.metadata:
+                                geom.metadata["file_path"] = new_s.metadata["file_path"]
+                                geom.metadata["file_name"] = new_s.metadata["file_name"]
+                                geom.metadata["file_element"] = i
+
                 # scale mesh appropriately
                 if geometry.mesh.scale is not None:
                     if isinstance(geometry.mesh.scale, float):
