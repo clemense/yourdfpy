@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.41 (development)
+- yourdfpy.Sphere visible
+
 ## Version 0.0.40 (development)
 - Add 'file_path', 'file_name', and 'file_element' to trimesh geometry's metadata in case loaded OBJ file contains multiple parts
 - Load collision geometry for viz

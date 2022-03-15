@@ -33,6 +33,7 @@ from .urdf import (
     Mimic,
     Robot,
     SafetyController,
+    Sphere,
     Texture,
     Transmission,
     TransmissionJoint,
