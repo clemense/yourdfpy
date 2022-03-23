@@ -896,10 +896,11 @@ class URDF:
         ]:
             matrix, joint_q = self._forward_kinematics_joint(j, q=q)
 
-            # update internal configuration vector - to enable mimic joint mapping
-            self._cfg[
-                self.actuated_dof_indices[self.actuated_joint_names.index(j.name)]
-            ] = joint_q
+            # update internal configuration vector - only consider actuated joints
+            if j.name in self.actuated_joint_names:
+                self._cfg[
+                    self.actuated_dof_indices[self.actuated_joint_names.index(j.name)]
+                ] = joint_q
 
             if self._scene is not None:
                 self._scene.graph.update(

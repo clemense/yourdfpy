@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.42 (development)
+- Fix bug when updating robots with mimic joints 
+
 ## Version 0.0.41 (development)
 - yourdfpy.Sphere visible
 
