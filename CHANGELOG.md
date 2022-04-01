@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.43 (development)
+- Skip material loading for collision geometries
+
 ## Version 0.0.42 (development)
 - Fix bug when updating robots with mimic joints 
 

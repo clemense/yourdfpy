@@ -967,7 +967,7 @@ class URDF:
         self._collision_mesh = meshes[0] + meshes[1:]
         return self._collision_mesh
 
-    def _geometry2trimeshscene(self, geometry, load_file, force_mesh):
+    def _geometry2trimeshscene(self, geometry, load_file, force_mesh, skip_materials):
         new_s = None
         if geometry.box is not None:
             new_s = trimesh.Scene([trimesh.creation.box(extents=geometry.box.size)])
@@ -991,7 +991,12 @@ class URDF:
                 _logger.debug(f"Loading {geometry.mesh.filename} as {new_filename}")
 
                 if force_mesh:
-                    new_g = trimesh.load(new_filename, ignore_broken=True, force="mesh")
+                    new_g = trimesh.load(
+                        new_filename,
+                        ignore_broken=True,
+                        force="mesh",
+                        skip_materials=skip_materials,
+                    )
 
                     # add original filename
                     if "file_path" not in new_g.metadata:
@@ -1002,7 +1007,10 @@ class URDF:
                     new_s.add_geometry(new_g)
                 else:
                     new_s = trimesh.load(
-                        new_filename, ignore_broken=True, force="scene"
+                        new_filename,
+                        ignore_broken=True,
+                        force="scene",
+                        skip_materials=skip_materials,
                     )
 
                     if "file_path" in new_s.metadata:
@@ -1038,6 +1046,7 @@ class URDF:
         load_geometry,
         force_mesh,
         force_single_geometry,
+        skip_materials,
     ):
         if force_single_geometry:
             tmp_scene = trimesh.Scene(base_frame=link_name)
@@ -1050,7 +1059,10 @@ class URDF:
                     first_geom_name = v.name
 
                 new_s = self._geometry2trimeshscene(
-                    geometry=v.geometry, load_file=load_geometry, force_mesh=force_mesh
+                    geometry=v.geometry,
+                    load_file=load_geometry,
+                    force_mesh=force_mesh,
+                    skip_materials=skip_materials,
                 )
                 if new_s is not None:
                     origin = v.origin if v.origin is not None else np.eye(4)
@@ -1105,6 +1117,7 @@ class URDF:
                 load_geometry=load_geometry,
                 force_mesh=force_mesh,
                 force_single_geometry=force_single_geometry_per_link,
+                skip_materials=use_collision_geometry,
             )
 
         return s
