@@ -235,6 +235,18 @@ def _str2float(s):
     return float(s) if s is not None else None
 
 
+def apply_visual_color(geom: trimesh.Trimesh, visual: Visual):
+    if visual.material is None or visual.material.color is None:
+        return
+    n = len(geom.visual.face_colors)
+    int_color = [int(255 * channel) for  channel in visual.material.color.rgba]
+    for i in range(n):
+        geom.visual.face_colors[i][0] = int_color[0]
+        geom.visual.face_colors[i][1] = int_color[1]
+        geom.visual.face_colors[i][2] = int_color[2]
+        geom.visual.face_colors[i][3] = int_color[3]
+
+
 def filename_handler_null(fname):
     """A lazy filename handler that simply returns its input.
 
@@ -1069,6 +1081,8 @@ class URDF:
 
                     if force_single_geometry:
                         for name, geom in new_s.geometry.items():
+                            if isinstance(v, Visual):
+                                apply_visual_color(geom, v)
                             tmp_scene.add_geometry(
                                 geometry=geom,
                                 geom_name=v.name,
@@ -1077,6 +1091,8 @@ class URDF:
                             )
                     else:
                         for name, geom in new_s.geometry.items():
+                            if isinstance(v, Visual):
+                                apply_visual_color(geom, v)
                             s.add_geometry(
                                 geometry=geom,
                                 geom_name=v.name,
