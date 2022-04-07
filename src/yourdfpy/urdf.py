@@ -238,7 +238,6 @@ def _str2float(s):
 def apply_visual_color(geom: trimesh.Trimesh, visual: Visual):
     if visual.material is None or visual.material.color is None:
         return
-    n = len(geom.visual.face_colors)
     geom.visual.face_colors[:] = [
         int(255 * channel) for  channel in visual.material.color.rgba
     ]
