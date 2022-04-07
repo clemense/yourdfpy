@@ -18,7 +18,7 @@ pip install yourdfpy
 
 ## Visualization
 
-Once installed, your can visualize a URDF model from the command line:
+Once installed, you can visualize a URDF model from the command line:
 ```
 yourdfpy ./my_description/urdf/robot.urdf
 ```
