@@ -239,12 +239,9 @@ def apply_visual_color(geom: trimesh.Trimesh, visual: Visual):
     if visual.material is None or visual.material.color is None:
         return
     n = len(geom.visual.face_colors)
-    int_color = [int(255 * channel) for  channel in visual.material.color.rgba]
-    for i in range(n):
-        geom.visual.face_colors[i][0] = int_color[0]
-        geom.visual.face_colors[i][1] = int_color[1]
-        geom.visual.face_colors[i][2] = int_color[2]
-        geom.visual.face_colors[i][3] = int_color[3]
+    geom.visual.face_colors[:] = [
+        int(255 * channel) for  channel in visual.material.color.rgba
+    ]
 
 
 def filename_handler_null(fname):
