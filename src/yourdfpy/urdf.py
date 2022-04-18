@@ -659,6 +659,10 @@ class URDF:
                 raise ValueError(
                     "No scene available. Use build_scene_graph=True and load_meshes=True during loading."
                 )
+            elif len(self._scene.bounds_corners) < 1:
+                raise ValueError(
+                    "Scene is empty, maybe meshes failed to load? Use build_scene_graph=True and load_meshes=True during loading."
+                )
             else:
                 self._scene.show()
 
