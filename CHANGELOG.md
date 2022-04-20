@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.0.44 (development)
+- Parse and write `name` attribute of `material` element 
+- Apply colors to mesh if available
+- Handle empty scene exception (in case of URDF without meshes)
+
 ## Version 0.0.43 (development)
 - Skip material loading for collision geometries
 
