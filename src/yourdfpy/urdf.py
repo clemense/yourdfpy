@@ -101,6 +101,7 @@ class Texture:
 
 @dataclass
 class Material:
+    name: Optional[str] = None
     color: Optional[Color] = None
     texture: Optional[Texture] = None
 
@@ -239,7 +240,7 @@ def apply_visual_color(geom: trimesh.Trimesh, visual: Visual):
     if visual.material is None or visual.material.color is None:
         return
     geom.visual.face_colors[:] = [
-        int(255 * channel) for  channel in visual.material.color.rgba
+        int(255 * channel) for channel in visual.material.color.rgba
     ]
 
 
@@ -1585,7 +1586,7 @@ class URDF:
         if xml_element is None:
             return None
 
-        material = Material()
+        material = Material(name=xml_element.get("name"))
         material.color = URDF._parse_color(xml_element.find("color"))
         material.texture = URDF._parse_texture(xml_element.find("texture"))
 
@@ -1595,7 +1596,12 @@ class URDF:
         if material is None:
             return
 
-        xml_element = etree.SubElement(xml_parent, "material")
+        attrib = {"name": material.name} if material.name is not None else {}
+        xml_element = etree.SubElement(
+            xml_parent,
+            "material",
+            attrib=attrib,
+        )
 
         self._write_color(xml_element, material.color)
         self._write_texture(xml_element, material.texture)
