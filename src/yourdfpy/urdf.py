@@ -2122,6 +2122,15 @@ class URDF:
             robot.links.append(URDF._parse_link(l))
         for j in xml_element.findall("joint"):
             robot.joints.append(URDF._parse_joint(j))
+        for m in xml_element.findall("material"):
+            material = URDF._parse_material(m)
+            if material.name:
+                if robot.materials.has(material.name):
+                    _logger.warning(
+                        "Multiple definitions of material name "
+                        f"{material.name}, using this one: {material}"
+                    )
+                robot.materials[material.name] = material
         return robot
 
     def _validate_robot(self, robot):
