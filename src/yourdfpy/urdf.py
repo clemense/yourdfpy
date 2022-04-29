@@ -4,7 +4,7 @@ import copy
 import logging
 import numpy as np
 from dataclasses import dataclass, field, is_dataclass
-from typing import Optional, Union, List
+from typing import Dict, List, Optional, Union
 from functools import partial
 
 import trimesh
@@ -311,6 +311,7 @@ class Robot:
     name: str
     links: List[Link] = field(default_factory=list)
     joints: List[Joint] = field(default_factory=list)
+    materials: Dict[str, Material] = field(default_factory=dict)
     transmission: List[str] = field(default_factory=list)
     gazebo: List[str] = field(default_factory=list)
 
