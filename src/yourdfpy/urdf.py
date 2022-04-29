@@ -399,12 +399,30 @@ def _str2float(s):
     return float(s) if s is not None else None
 
 
-def apply_visual_color(geom: trimesh.Trimesh, visual: Visual):
-    if visual.material is None or visual.material.color is None:
+def apply_visual_color(
+    geom: trimesh.Trimesh,
+    visual: Visual,
+    materials: Dict[str, Material],
+) -> None:
+    """Apply the color of the visual material to the mesh.
+
+    Args:
+        geom: Trimesh to color.
+        visual: Visual description from XML.
+        materials: Dictionary mapping material names to their data.
+    """
+    if visual.material is None:
+        return
+    color = (
+        materials[visual.material.name].color
+        if visual.material.name
+        else visual.material.color
+    )
+    if color is None:
         return
     if isinstance(geom.visual, trimesh.visual.ColorVisuals):
         geom.visual.face_colors[:] = [
-            int(255 * channel) for channel in visual.material.color.rgba
+            int(255 * channel) for channel in color.rgba
         ]
 
 
@@ -1250,7 +1268,9 @@ class URDF:
                     if force_single_geometry:
                         for name, geom in new_s.geometry.items():
                             if isinstance(v, Visual):
-                                apply_visual_color(geom, v)
+                                apply_visual_color(
+                                    geom, v, self.robot.materials
+                                )
                             tmp_scene.add_geometry(
                                 geometry=geom,
                                 geom_name=v.name,
@@ -1260,7 +1280,9 @@ class URDF:
                     else:
                         for name, geom in new_s.geometry.items():
                             if isinstance(v, Visual):
-                                apply_visual_color(geom, v)
+                                apply_visual_color(
+                                    geom, v, self.robot.materials
+                                )
                             s.add_geometry(
                                 geometry=geom,
                                 geom_name=v.name,
