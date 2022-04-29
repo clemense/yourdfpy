@@ -2147,7 +2147,7 @@ class URDF:
         for m in xml_element.findall("material"):
             material = URDF._parse_material(m)
             if material.name:
-                if robot.materials.has(material.name):
+                if material.name in robot.materials:
                     _logger.warning(
                         "Multiple definitions of material name "
                         f"{material.name}, using this one: {material}"
