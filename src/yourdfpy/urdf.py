@@ -379,9 +379,15 @@ def filename_handler_magic(fname, dir):
     Returns:
         str: The file name that exists or the input if nothing is found.
     """
+    relative_handlers = [partial(filename_handler_relative, dir=dir)]
+    if fname.startswith("package://"):
+        package_dir = fname[len("package://"):].split('/')[0]
+        relative_handlers.append(
+            partial(filename_handler_relative, dir=package_dir)
+        )
     return filename_handler_meta(
         fname=fname,
-        filename_handlers=[partial(filename_handler_relative, dir=dir)]
+        filename_handlers=relative_handlers
         + _create_filename_handlers_to_urdf_file_recursive(urdf_fname=dir),
     )
 
