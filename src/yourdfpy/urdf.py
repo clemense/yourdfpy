@@ -1125,7 +1125,11 @@ class URDF:
             s.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
 
         for l in self.robot.links:
-            s.graph.nodes.add(l.name)
+            if l.name not in s.graph.nodes:
+                _logger.warn(
+                    "{l.name} not connected via joints. Will add link to base frame."
+                )
+                s.graph.update(frame_from=s.graph.base_frame, frame_to=l.name)
 
             meshes = l.collisions if use_collision_geometry else l.visuals
             self._add_geometries_to_scene(

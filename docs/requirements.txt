@@ -6,5 +6,5 @@ sphinx>=3.2.1
 sphinx_rtd_theme
 sphinx-automodapi
 lxml
-trimesh>=3.9.35
+trimesh>=3.11.2
 numpy
