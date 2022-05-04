@@ -2174,6 +2174,8 @@ class URDF:
             self._write_link(xml_element, link)
         for joint in robot.joints:
             self._write_joint(xml_element, joint)
+        for material in robot.materials:
+            self._write_material(xml_element, material)
 
         return xml_element
 
