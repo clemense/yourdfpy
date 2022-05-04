@@ -21,7 +21,7 @@ def test_trimesh_version():
     import trimesh
 
     print(trimesh.__version__)
-    assert True
+    assert trimesh.__version == "asdf"
 
 
 def test_robot():
