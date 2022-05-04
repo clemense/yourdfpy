@@ -17,6 +17,13 @@ def _create_robot():
     return r
 
 
+def test_trimesh_version():
+    import trimesh
+
+    print(trimesh.__version__)
+    assert True
+
+
 def test_robot():
     r = _create_robot()
     assert r.name == "test_robot"
