@@ -31,3 +31,14 @@ def test_validate():
 def test_mimic_joint():
     urdf_fname = os.path.join(DIR_MODELS, "franka", "franka.urdf")
     urdf_model = urdf.URDF.load(urdf_fname)
+
+    assert True
+
+
+def test_equality():
+    urdf_fname = os.path.join(DIR_MODELS, "franka", "franka.urdf")
+    urdf_model = urdf.URDF.load(urdf_fname)
+
+    urdf_model_2 = urdf.URDF.load(urdf_fname)
+
+    assert urdf_model == urdf_model_2
