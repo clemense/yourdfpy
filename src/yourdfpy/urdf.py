@@ -381,7 +381,10 @@ def filename_handler_magic(fname, dir):
     """
     return filename_handler_meta(
         fname=fname,
-        filename_handlers=[partial(filename_handler_relative, dir=dir)]
+        filename_handlers=[
+            partial(filename_handler_relative, dir=dir),
+            filename_handler_ignore_directive,
+        ]
         + _create_filename_handlers_to_urdf_file_recursive(urdf_fname=dir),
     )
 
