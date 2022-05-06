@@ -1,8 +1,10 @@
 # Changelog
 
-## Version 0.0.45 (upcoming, development)
+## Version 0.0.45 (development)
 - Upgrade to trimesh version 3.11.2
-- Add `__eq__` operator to URDF based on equality of individual elements (order-invariant)
+- Add `__eq__` operator to URDF based on equality of individual elements (order-invariant) [PR18](https://github.com/clemense/yourdfpy/pull/18)
+- Add material information [PR15](https://github.com/clemense/yourdfpy/pull/15)
+- Improve mesh filename search [PR14](https://github.com/clemense/yourdfpy/pull/14)
 
 ## Version 0.0.44 (development)
 - Parse and write `name` attribute of `material` element 
