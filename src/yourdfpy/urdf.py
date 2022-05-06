@@ -311,7 +311,7 @@ class Robot:
     name: str
     links: List[Link] = field(default_factory=list)
     joints: List[Joint] = field(default_factory=list)
-    materials: Dict[str, Material] = field(default_factory=dict)
+    materials: List[Material] = field(default_factory=list)
     transmission: List[str] = field(default_factory=list)
     gazebo: List[str] = field(default_factory=list)
 
@@ -402,19 +402,19 @@ def _str2float(s):
 def apply_visual_color(
     geom: trimesh.Trimesh,
     visual: Visual,
-    materials: Dict[str, Material],
+    material_map: Dict[str, Material],
 ) -> None:
     """Apply the color of the visual material to the mesh.
 
     Args:
         geom: Trimesh to color.
         visual: Visual description from XML.
-        materials: Dictionary mapping material names to their data.
+        material_map: Dictionary mapping material names to their definitions.
     """
     if visual.material is None:
         return
     color = (
-        materials[visual.material.name].color
+        material_map[visual.material.name].color
         if visual.material.name
         else visual.material.color
     )
@@ -870,6 +870,10 @@ class URDF:
         return validation_fn(self._errors)
 
     def _create_maps(self):
+        self._material_map = {}
+        for m in self.robot.materials:
+            self._material_map[m.name] = m
+
         self._joint_map = {}
         for j in self.robot.joints:
             self._joint_map[j.name] = j
@@ -1269,7 +1273,7 @@ class URDF:
                         for name, geom in new_s.geometry.items():
                             if isinstance(v, Visual):
                                 apply_visual_color(
-                                    geom, v, self.robot.materials
+                                    geom, v, self._material_map
                                 )
                             tmp_scene.add_geometry(
                                 geometry=geom,
@@ -1281,7 +1285,7 @@ class URDF:
                         for name, geom in new_s.geometry.items():
                             if isinstance(v, Visual):
                                 apply_visual_color(
-                                    geom, v, self.robot.materials
+                                    geom, v, self._material_map
                                 )
                             s.add_geometry(
                                 geometry=geom,
@@ -2145,14 +2149,7 @@ class URDF:
         for j in xml_element.findall("joint"):
             robot.joints.append(URDF._parse_joint(j))
         for m in xml_element.findall("material"):
-            material = URDF._parse_material(m)
-            if material.name:
-                if material.name in robot.materials:
-                    _logger.warning(
-                        "Multiple definitions of material name "
-                        f"{material.name}, using this one: {material}"
-                    )
-                robot.materials[material.name] = material
+            robot.materials.append(URDF._parse_material(m))
         return robot
 
     def _validate_robot(self, robot):
