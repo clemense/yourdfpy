@@ -4,7 +4,7 @@ import copy
 import logging
 import numpy as np
 from dataclasses import dataclass, field, is_dataclass
-from typing import Optional, Union, List
+from typing import Dict, List, Optional, Union
 from functools import partial
 
 import trimesh
@@ -311,6 +311,7 @@ class Robot:
     name: str
     links: List[Link] = field(default_factory=list)
     joints: List[Joint] = field(default_factory=list)
+    materials: List[Material] = field(default_factory=list)
     transmission: List[str] = field(default_factory=list)
     gazebo: List[str] = field(default_factory=list)
 
@@ -323,6 +324,12 @@ class Robot:
             and all(other_link in self.links for other_link in other.links)
             and all(self_joint in other.joints for self_joint in self.joints)
             and all(other_joint in self.joints for other_joint in other.joints)
+            and all(
+                self_material in other.materials
+                for self_material in self.materials)
+            and all(
+                other_material in self.materials
+                for other_material in other.materials)
             and all(
                 self_transmission in other.transmission
                 for self_transmission in self.transmission
@@ -398,12 +405,30 @@ def _str2float(s):
     return float(s) if s is not None else None
 
 
-def apply_visual_color(geom: trimesh.Trimesh, visual: Visual):
-    if visual.material is None or visual.material.color is None:
+def apply_visual_color(
+    geom: trimesh.Trimesh,
+    visual: Visual,
+    material_map: Dict[str, Material],
+) -> None:
+    """Apply the color of the visual material to the mesh.
+
+    Args:
+        geom: Trimesh to color.
+        visual: Visual description from XML.
+        material_map: Dictionary mapping material names to their definitions.
+    """
+    if visual.material is None:
+        return
+    color = (
+        material_map[visual.material.name].color
+        if visual.material.name
+        else visual.material.color
+    )
+    if color is None:
         return
     if isinstance(geom.visual, trimesh.visual.ColorVisuals):
         geom.visual.face_colors[:] = [
-            int(255 * channel) for channel in visual.material.color.rgba
+            int(255 * channel) for channel in color.rgba
         ]
 
 
@@ -851,6 +876,10 @@ class URDF:
         return validation_fn(self._errors)
 
     def _create_maps(self):
+        self._material_map = {}
+        for m in self.robot.materials:
+            self._material_map[m.name] = m
+
         self._joint_map = {}
         for j in self.robot.joints:
             self._joint_map[j.name] = j
@@ -1249,7 +1278,9 @@ class URDF:
                     if force_single_geometry:
                         for name, geom in new_s.geometry.items():
                             if isinstance(v, Visual):
-                                apply_visual_color(geom, v)
+                                apply_visual_color(
+                                    geom, v, self._material_map
+                                )
                             tmp_scene.add_geometry(
                                 geometry=geom,
                                 geom_name=v.name,
@@ -1259,7 +1290,9 @@ class URDF:
                     else:
                         for name, geom in new_s.geometry.items():
                             if isinstance(v, Visual):
-                                apply_visual_color(geom, v)
+                                apply_visual_color(
+                                    geom, v, self._material_map
+                                )
                             s.add_geometry(
                                 geometry=geom,
                                 geom_name=v.name,
@@ -2121,6 +2154,8 @@ class URDF:
             robot.links.append(URDF._parse_link(l))
         for j in xml_element.findall("joint"):
             robot.joints.append(URDF._parse_joint(j))
+        for m in xml_element.findall("material"):
+            robot.materials.append(URDF._parse_material(m))
         return robot
 
     def _validate_robot(self, robot):
@@ -2142,6 +2177,8 @@ class URDF:
             self._write_link(xml_element, link)
         for joint in robot.joints:
             self._write_joint(xml_element, joint)
+        for material in robot.materials:
+            self._write_material(xml_element, material)
 
         return xml_element
 
