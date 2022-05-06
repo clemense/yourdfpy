@@ -325,11 +325,11 @@ class Robot:
             and all(self_joint in other.joints for self_joint in self.joints)
             and all(other_joint in self.joints for other_joint in other.joints)
             and all(
-                self_material in other.materials
-                for self_material in self.materials)
+                self_material in other.materials for self_material in self.materials
+            )
             and all(
-                other_material in self.materials
-                for other_material in other.materials)
+                other_material in self.materials for other_material in other.materials
+            )
             and all(
                 self_transmission in other.transmission
                 for self_transmission in self.transmission
@@ -427,9 +427,7 @@ def apply_visual_color(
     if color is None:
         return
     if isinstance(geom.visual, trimesh.visual.ColorVisuals):
-        geom.visual.face_colors[:] = [
-            int(255 * channel) for channel in color.rgba
-        ]
+        geom.visual.face_colors[:] = [int(255 * channel) for channel in color.rgba]
 
 
 def filename_handler_null(fname):
@@ -1166,7 +1164,7 @@ class URDF:
                 if g.geometry.mesh is not None:
                     if g.geometry.mesh.scale is not None:
                         S = np.eye(4)
-                        S[:3, :3] = np.diag(c.geometry.mesh.scale)
+                        S[:3, :3] = np.diag(g.geometry.mesh.scale)
                         pose = pose.dot(S)
                 m.apply_transform(pose)
                 meshes.append(m)
@@ -1278,9 +1276,7 @@ class URDF:
                     if force_single_geometry:
                         for name, geom in new_s.geometry.items():
                             if isinstance(v, Visual):
-                                apply_visual_color(
-                                    geom, v, self._material_map
-                                )
+                                apply_visual_color(geom, v, self._material_map)
                             tmp_scene.add_geometry(
                                 geometry=geom,
                                 geom_name=v.name,
@@ -1290,9 +1286,7 @@ class URDF:
                     else:
                         for name, geom in new_s.geometry.items():
                             if isinstance(v, Visual):
-                                apply_visual_color(
-                                    geom, v, self._material_map
-                                )
+                                apply_visual_color(geom, v, self._material_map)
                             s.add_geometry(
                                 geometry=geom,
                                 geom_name=v.name,
