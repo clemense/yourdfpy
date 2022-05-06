@@ -325,6 +325,12 @@ class Robot:
             and all(self_joint in other.joints for self_joint in self.joints)
             and all(other_joint in self.joints for other_joint in other.joints)
             and all(
+                self_material in other.materials
+                for self_material in self.materials)
+            and all(
+                other_material in self.materials
+                for other_material in other.materials)
+            and all(
                 self_transmission in other.transmission
                 for self_transmission in self.transmission
             )
