@@ -419,11 +419,14 @@ def apply_visual_color(
     """
     if visual.material is None:
         return
-    color = (
-        material_map[visual.material.name].color
-        if visual.material.name
-        else visual.material.color
-    )
+    
+    if visual.material.color is not None:
+        color = visual.material.color
+    elif visual.material.name is not None and visual.material.name in material_map:
+        color = material_map[visual.material.name].color
+    else:
+        return
+
     if color is None:
         return
     if isinstance(geom.visual, trimesh.visual.ColorVisuals):
@@ -951,7 +954,7 @@ class URDF:
 
         try:
             parser = etree.XMLParser(remove_blank_text=True)
-            tree = etree.parse(fname_or_file, parser)
+            tree = etree.parse(fname_or_file, parser=parser)
             xml_root = tree.getroot()
         except Exception as e:
             _logger.error(e)
