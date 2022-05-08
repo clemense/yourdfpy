@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.46 (development)
+- Bugfix: Named material with color wouldn't be applied
+
 ## Version 0.0.45 (development)
 - Upgrade to trimesh version 3.11.2
 - Add `__eq__` operator to URDF based on equality of individual elements (order-invariant) [PR18](https://github.com/clemense/yourdfpy/pull/18)
