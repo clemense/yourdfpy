@@ -102,3 +102,39 @@ def test_material_mapping():
 
         assert urdf_model.robot.links[0].visuals[0].material.name == "red_material"
         assert all(urdf_model._material_map["red_material"].color.rgba == [1, 0, 0, 1])
+
+
+def test_geometric_primitives():
+    urdf_str = """
+    <robot name="primitives_test">
+        <link name="link_0">
+            <visual>
+                <geometry>
+                    <sphere radius="11" />
+                </geometry>
+            </visual>
+            <visual>
+                <geometry>
+                    <box size="1 2 3" />
+                </geometry>
+            </visual>
+            <visual>
+                <geometry>
+                    <cylinder radius="11" length="4"/>
+                </geometry>
+            </visual>
+        </link>
+        <material name="red_material">
+            <color rgba="1.0 0.0 0.0 1.0" />
+        </material>
+    </robot>
+    """
+    with io.StringIO(urdf_str) as f:
+        urdf_model = urdf.URDF.load(f)
+
+        assert urdf_model.link_map["link_0"].visuals[0].geometry.sphere.radius == 11
+        assert all(
+            urdf_model.link_map["link_0"].visuals[1].geometry.box.size == [1, 2, 3]
+        )
+        assert urdf_model.link_map["link_0"].visuals[2].geometry.cylinder.radius == 11
+        assert urdf_model.link_map["link_0"].visuals[2].geometry.cylinder.length == 4
