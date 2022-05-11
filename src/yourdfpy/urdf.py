@@ -419,7 +419,7 @@ def apply_visual_color(
     """
     if visual.material is None:
         return
-    
+
     if visual.material.color is not None:
         color = visual.material.color
     elif visual.material.name is not None and visual.material.name in material_map:
@@ -1179,20 +1179,13 @@ class URDF:
     def _geometry2trimeshscene(self, geometry, load_file, force_mesh, skip_materials):
         new_s = None
         if geometry.box is not None:
-            new_s = trimesh.Scene([trimesh.creation.box(extents=geometry.box.size)])
+            new_s = trimesh.primitives.Box(extents=geometry.box.size).scene()
         elif geometry.sphere is not None:
-            new_s = trimesh.Scene(
-                [trimesh.creation.uv_sphere(radius=geometry.sphere.radius)]
-            )
+            new_s = trimesh.primitives.Sphere(radius=geometry.sphere.radius).scene()
         elif geometry.cylinder is not None:
-            new_s = trimesh.Scene(
-                [
-                    trimesh.creation.cylinder(
-                        radius=geometry.cylinder.radius,
-                        height=geometry.cylinder.length,
-                    )
-                ]
-            )
+            new_s = trimesh.primitives.Cylinder(
+                radius=geometry.cylinder.radius, height=geometry.cylinder.length
+            ).scene()
         elif geometry.mesh is not None and load_file:
             new_filename = self._filename_handler(fname=geometry.mesh.filename)
 
@@ -1322,7 +1315,7 @@ class URDF:
         for l in self.robot.links:
             if l.name not in s.graph.nodes:
                 _logger.warn(
-                    "{l.name} not connected via joints. Will add link to base frame."
+                    f"{l.name} not connected via joints. Will add link to base frame."
                 )
                 s.graph.update(frame_from=s.graph.base_frame, frame_to=l.name)
 
@@ -1615,7 +1608,7 @@ class URDF:
         )
 
     def _parse_box(xml_element):
-        return Box(size=np.array(xml_element.attrib["size"].split()))
+        return Box(size=np.array(xml_element.attrib["size"].split(), dtype=np.float))
 
     def _write_box(self, xml_parent, box):
         etree.SubElement(
