@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.0.47 (development)
+- Bugfix: Parsing box dimensions
+- Change to `trimesh.primitives.*` for geometric primitives (instead of `trimesh.creation.*`)
+
 ## Version 0.0.46 (development)
 - Bugfix: Named material with color wouldn't be applied
 
