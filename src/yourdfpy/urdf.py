@@ -834,7 +834,7 @@ class URDF:
         """Clear the validation error log."""
         self._errors = []
 
-    def show(self, collision_geometry=False):
+    def show(self, collision_geometry=False, callback=None):
         """Open a simpler viewer displaying the URDF model.
 
         Args:
@@ -846,7 +846,7 @@ class URDF:
                     "No collision scene available. Use build_collision_scene_graph=True and load_collision_meshes=True during loading."
                 )
             else:
-                self._scene_collision.show()
+                self._scene_collision.show(callback=callback)
         else:
             if self._scene is None:
                 raise ValueError(
@@ -857,7 +857,7 @@ class URDF:
                     "Scene is empty, maybe meshes failed to load? Use build_scene_graph=True and load_meshes=True during loading."
                 )
             else:
-                self._scene.show()
+                self._scene.show(callback=callback)
 
     def validate(self, validation_fn=None) -> bool:
         """Validate URDF model.
