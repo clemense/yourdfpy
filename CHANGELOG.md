@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.0.48 (development)
+- Implement `-c`/`--configuration` argument for `yourdfpy`
+- Add `--animate` flag to `yourdfpy`
+
 ## Version 0.0.47 (development)
 - Bugfix: Parsing box dimensions
 - Change to `trimesh.primitives.*` for geometric primitives (instead of `trimesh.creation.*`)
