@@ -1313,8 +1313,8 @@ class URDF:
             s.graph.update(frame_from=j.parent, frame_to=j.child, matrix=matrix)
 
         for l in self.robot.links:
-            if l.name not in s.graph.nodes:
-                _logger.warn(
+            if l.name not in s.graph.nodes and l.name != s.graph.base_frame:
+                _logger.warning(
                     f"{l.name} not connected via joints. Will add link to base frame."
                 )
                 s.graph.update(frame_from=s.graph.base_frame, frame_to=l.name)
