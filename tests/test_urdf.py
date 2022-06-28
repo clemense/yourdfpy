@@ -57,6 +57,24 @@ def test_equality_different_link_order():
     assert robot_0 == robot_1
 
 
+def test_single_link_urdf():
+    urdf_str = """
+    <robot name="single_link">
+        <link name="link_0">
+            <visual>
+                <geometry>
+                    <sphere radius="1" />
+                </geometry>
+            </visual>
+        </link>
+    </robot>
+    """
+    with io.StringIO(urdf_str) as f:
+        urdf_model = urdf.URDF.load(f)
+
+        assert len(urdf_model.scene.graph.to_edgelist()) == 1
+
+
 def test_material_color():
     urdf_str = """
     <robot name="material_test">
