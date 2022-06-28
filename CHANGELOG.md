@@ -1,5 +1,7 @@
 # Changelog
 
+## Version 0.0.49 (development)
+- Fix single link URDF trimesh scene bug [PR26](https://github.com/clemense/yourdfpy/pull/26)
 ## Version 0.0.48 (development)
 - Implement `-c`/`--configuration` argument for `yourdfpy`
 - Add `--animate` flag to `yourdfpy`
