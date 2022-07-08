@@ -454,11 +454,14 @@ def filename_handler_ignore_directive(fname):
     Returns:
         str: The file name without the prefix.
     """
-    return fname.split(f":{os.path.sep}{os.path.sep}")[-1]
+    if "://" in fname or ":\\\\" in fname:
+        return ":".join(fname.split(":")[1:])[2:]
+    return fname
 
 
 def filename_handler_ignore_directive_package(fname):
     """A filename handler that removes the 'package://' directive and the package it refers to.
+    It subsequently calls filename_handler_ignore_directive, i.e., it removes any other directive.
 
     Args:
         fname (str): A file name.
@@ -466,9 +469,10 @@ def filename_handler_ignore_directive_package(fname):
     Returns:
         str: The file name without 'package://' and the package name.
     """
-    if fname.startswith("package:"):
-        return os.path.sep.join(
-            fname.split(f":{os.path.sep}{os.path.sep}")[-1].split(os.path.sep)[1:]
+    if fname.startswith("package://"):
+        string_length = len("package://")
+        return os.path.join(
+            *os.path.normpath(fname[string_length:]).split(os.path.sep)[1:]
         )
     return filename_handler_ignore_directive(fname)
 
