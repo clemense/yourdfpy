@@ -1,7 +1,10 @@
 # Changelog
 
-## Version 0.0.50 (development)
+## Version 0.0.51 (development)
 - Fix path separator issues in Windows [Issue 27](https://github.com/clemense/yourdfpy/issues/27)
+
+## Version 0.0.50 (development)
+- A nothingburger
 
 ## Version 0.0.49 (development)
 - Fix single link URDF trimesh scene bug [PR26](https://github.com/clemense/yourdfpy/pull/26)
