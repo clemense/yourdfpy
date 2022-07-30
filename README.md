@@ -65,6 +65,7 @@ def load_urdfs(fnames, load_fn):
             x = load_fn(fname)
             results[fname] = x
         except:
+            print("Problems loading: ", fname)
             pass
     print(sum([1 for x, y in results.items() if y is not None]), "/", len(fnames))
     return results
