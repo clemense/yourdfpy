@@ -1,8 +1,10 @@
 # Changelog
 
 ## Version 0.0.52 (under development)
-- _parse_mass() returns float instead of str
+- `_parse_mass()` returns `float` instead of `str`
 - default parsed mass is 0.0 instead of 1.0 (see http://wiki.ros.org/urdf/XML/link)
+- Update `trimesh` dependency to `trimesh[easy]` (to support loading Collada meshes)
+- Won't crash when loading model with joints that mimic unactuated/fixed joints.
 
 ## Version 0.0.51
 - Fix path separator issues in Windows [Issue 27](https://github.com/clemense/yourdfpy/issues/27)

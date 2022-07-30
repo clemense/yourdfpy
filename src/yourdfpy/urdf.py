@@ -1045,11 +1045,17 @@ class URDF:
         origin = np.eye(4) if joint.origin is None else joint.origin
 
         if joint.mimic is not None:
-            mimic_joint_index = self.actuated_joint_names.index(joint.mimic.joint)
-            q = (
-                self._cfg[mimic_joint_index] * joint.mimic.multiplier
-                + joint.mimic.offset
-            )
+            if joint.mimic.joint in self.actuated_joint_names:
+                mimic_joint_index = self.actuated_joint_names.index(joint.mimic.joint)
+                q = (
+                    self._cfg[mimic_joint_index] * joint.mimic.multiplier
+                    + joint.mimic.offset
+                )
+            else:
+                _logger.warning(
+                    f"Joint '{joint.name}' is supposed to mimic '{joint.mimic.joint}'. But this joint is not actuated - will assume (0.0 + offset)."
+                )
+                q = 0.0 + joint.mimic.offset
 
         if joint.type in ["revolute", "prismatic", "continuous"]:
             if q is None:
