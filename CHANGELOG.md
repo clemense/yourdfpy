@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 0.0.52 (under development)
+## Version 0.0.52
 - `_parse_mass()` returns `float` instead of `str`
 - default parsed mass is 0.0 instead of 1.0 (see http://wiki.ros.org/urdf/XML/link)
 - Update `trimesh` dependency to `trimesh[easy]` (to support loading Collada meshes)
