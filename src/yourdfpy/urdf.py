@@ -1901,7 +1901,7 @@ class URDF:
         if xml_element is None:
             return None
 
-        return xml_element.get("value", default=1.0)
+        return _str2float(xml_element.get("value", default=0.0))
 
     def _write_mass(self, xml_parent, mass):
         if mass is None:
