@@ -6,7 +6,7 @@ authors = ["Clemens Eppner <clemens.eppner@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8,<3.11"
 lxml = "^4.9.1"
 numpy = "^1.19.1"
 trimesh = "^3.12.9"
@@ -14,6 +14,11 @@ importlib-metadata = "^4.12.0"
 zipp = "^3.8.1"
 typing-extensions = "^4.3.0"
 six = "^1.16.0"
+pycollada = "^0.7.2"
+Pillow = "^9.2.0"
+pyglet = "^1.5.26"
+scipy = "^1.8.1"
+casadi = "3.5.6.pre2"
 
 [tool.poetry.dev-dependencies]
 setuptools = "^63.2.0"
