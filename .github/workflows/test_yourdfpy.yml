@@ -4,6 +4,7 @@ name: Testing yourdfy
 on: 
   push:
     branches:
+      - ft-poetry-support
       - main
   pull_request:
     branches:
