@@ -16,7 +16,7 @@ You can install yourdfpy directly from pip:
 pip install yourdfpy
 ```
 
-## Installation Developpers
+## Installation Developers
 
 You can install the package via [poetry](https://python-poetry.org/docs/).
 ```bash
