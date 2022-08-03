@@ -18,7 +18,6 @@ pycollada = "^0.7.2"
 Pillow = "^9.2.0"
 pyglet = "^1.5.26"
 scipy = "^1.7.1"
-casadi = "3.5.6.pre2"
 
 [tool.poetry.dev-dependencies]
 setuptools = "^63.2.0"

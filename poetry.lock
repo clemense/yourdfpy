@@ -40,14 +40,6 @@ python-versions = ">=3.6"
 pytz = ">=2015.7"
 
 [[package]]
-name = "casadi"
-version = "3.5.6.pre2"
-description = "CasADi -- framework for algorithmic differentiation and numeric optimization"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "certifi"
 version = "2022.6.15"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -571,7 +563,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1,<3.11"
-content-hash = "d97310e91a74cbb282820b80d1a712077eb695ba518ed505266b1a710c0735ae"
+content-hash = "875bcc2b57ab523cc76e80171daf09d810315172c2640c72150846e96521f398"
 
 [metadata.files]
 alabaster = [
@@ -588,21 +580,6 @@ attrs = [
 babel = [
     {file = "Babel-2.10.3-py3-none-any.whl", hash = "sha256:ff56f4892c1c4bf0d814575ea23471c230d544203c7748e8c68f0089478d48eb"},
     {file = "Babel-2.10.3.tar.gz", hash = "sha256:7614553711ee97490f732126dc077f8d0ae084ebc6a96e23db1482afabdb2c51"},
-]
-casadi = [
-    {file = "casadi-3.5.6.pre2-cp310-none-macosx_10_13_x86_64.macosx_10_13_intel.whl", hash = "sha256:5f231311fd768bc7bcb3fdfd2e96bcf3f3964de52b2d8a1bc496340d67711728"},
-    {file = "casadi-3.5.6.pre2-cp310-none-manylinux_2_5_x86_64.whl", hash = "sha256:3f772526eabebf44a9e1ea59ba056a5dbdc15b7526d29c7d9f2f7e5e2713c6a1"},
-    {file = "casadi-3.5.6.pre2-cp310-none-win_amd64.whl", hash = "sha256:e8821dc203ad273023f565e6cc972f738f2e04fa8fed6ec2f9589271c6aeed1f"},
-    {file = "casadi-3.5.6.pre2-cp36-none-manylinux_2_5_x86_64.whl", hash = "sha256:710cc30fbaa4bf597fe002e1a9c1e6238459882192663e5a0ed553fe87e2cd12"},
-    {file = "casadi-3.5.6.pre2-cp37-none-macosx_10_13_x86_64.macosx_10_13_intel.whl", hash = "sha256:4a521f224d3bf80a7df58eb77ac72321b36d5b512edabfc2dffaa39b4272a4fc"},
-    {file = "casadi-3.5.6.pre2-cp37-none-manylinux_2_5_x86_64.whl", hash = "sha256:755cb9740299d60afcfe29873f88b51a3492f7b724392a4f73423b1305557041"},
-    {file = "casadi-3.5.6.pre2-cp37-none-win_amd64.whl", hash = "sha256:132846c6005e109ba7ded56f190a91f9fd49ef34b5203f7fe8026ed81359cf33"},
-    {file = "casadi-3.5.6.pre2-cp38-none-macosx_10_13_x86_64.macosx_10_13_intel.whl", hash = "sha256:838575a383ed33ce3720e5fc7dec2f4a209bd458651a4954e69fe0f966fa9821"},
-    {file = "casadi-3.5.6.pre2-cp38-none-manylinux_2_5_x86_64.whl", hash = "sha256:6aa5141bb3f42807865209086cea1f4e7ae26def9c29095e58e573e41fa1dda8"},
-    {file = "casadi-3.5.6.pre2-cp38-none-win_amd64.whl", hash = "sha256:adbfcde2de2f20ad172c91178dec6b0e02004b11308337423d0e5e1a7585f7b2"},
-    {file = "casadi-3.5.6.pre2-cp39-none-macosx_10_13_x86_64.macosx_10_13_intel.whl", hash = "sha256:0e62f8ebc7cbc089c57d04c99891aca96c646593646d6b478f7a89ff422c51ca"},
-    {file = "casadi-3.5.6.pre2-cp39-none-manylinux_2_5_x86_64.whl", hash = "sha256:9f2e2e4357d0a8cf9e4f5e3ca0ff25b9b75a0b6e3488e02cdd8232443c47910d"},
-    {file = "casadi-3.5.6.pre2-cp39-none-win_amd64.whl", hash = "sha256:4b67be15652d9e5a5499092a4af19886752f71c058b9ad21009f865fe3c856aa"},
 ]
 certifi = [
     {file = "certifi-2022.6.15-py3-none-any.whl", hash = "sha256:fe86415d55e84719d75f8b69414f6438ac3547d2078ab91b67e779ef69378412"},
