@@ -1618,7 +1618,7 @@ class URDF:
         )
 
     def _parse_box(xml_element):
-        return Box(size=np.array(xml_element.attrib["size"].split(), dtype=np.float))
+        return Box(size=np.array(xml_element.attrib["size"].split(), dtype=np.float64))
 
     def _write_box(self, xml_parent, box):
         etree.SubElement(
