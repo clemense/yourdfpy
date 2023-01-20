@@ -8,6 +8,7 @@ python:
 
 install:
 - pip install setuptools_scm # this is needed, otherwise the correct version cannot be determined; it is always 0.0.0
+- pip install -U importlib_metadata
 - pip install .
 - pip install pytest pytest-cov # coveralls
 

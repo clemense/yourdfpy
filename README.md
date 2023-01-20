@@ -16,6 +16,18 @@ You can install yourdfpy directly from pip:
 pip install yourdfpy
 ```
 
+## Installation Developers
+
+You can install the package via [poetry](https://python-poetry.org/docs/).
+```bash
+poetry install
+```
+
+Then, enter the virtual enviroment that was created with 
+```bash
+poetry shell
+```
+
 ## Visualization
 
 Once installed, you can visualize a URDF model from the command line:
