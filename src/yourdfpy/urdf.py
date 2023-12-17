@@ -1620,7 +1620,9 @@ class URDF:
         )
 
     def _parse_box(xml_element):
-        return Box(size=np.array(xml_element.attrib["size"].split(), dtype=np.float64))
+        # In case the element uses comma as a separator
+        size = xml_element.attrib["size"].replace(',', ' ').split()
+        return Box(size=np.array(size, dtype=np.float64))
 
     def _write_box(self, xml_parent, box):
         etree.SubElement(
@@ -1648,7 +1650,8 @@ class URDF:
 
     def _parse_scale(xml_element):
         if "scale" in xml_element.attrib:
-            s = xml_element.get("scale").split()
+            # In case the element uses comma as a separator
+            s = xml_element.get("scale").replace(',', ' ').split()
             if len(s) == 0:
                 return None
             elif len(s) == 1:
