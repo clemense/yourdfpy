@@ -1,4 +1,9 @@
 # Changelog
+## Version 0.0.54
+- Add `pyglet<2` install dependency to `[full]` option (https://github.com/clemense/yourdfpy/issues/47)
+- Enable 3D scaling (https://github.com/clemense/yourdfpy/issues/48, https://github.com/clemense/yourdfpy/issues/41)
+- Fix geometry naming bug
+- Allow comma as a separator handling for box and mesh scales
 
 ## Version 0.0.53
 -  Fix NumPy float issue #46: https://github.com/clemense/yourdfpy/issues/45
