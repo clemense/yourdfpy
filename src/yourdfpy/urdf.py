@@ -1237,11 +1237,7 @@ class URDF:
                     if isinstance(geometry.mesh.scale, float):
                         new_s = new_s.scaled(geometry.mesh.scale)
                     elif isinstance(geometry.mesh.scale, np.ndarray):
-                        if not np.all(geometry.mesh.scale == geometry.mesh.scale[0]):
-                            _logger.warning(
-                                f"Warning: Can't scale axis independently, will use the first entry of '{geometry.mesh.scale}'"
-                            )
-                        new_s = new_s.scaled(geometry.mesh.scale[0])
+                        new_s = new_s.scaled(geometry.mesh.scale)
                     else:
                         _logger.warning(
                             f"Warning: Can't interpret scale '{geometry.mesh.scale}'"
@@ -1280,24 +1276,30 @@ class URDF:
                     origin = v.origin if v.origin is not None else np.eye(4)
 
                     if force_single_geometry:
-                        for name, geom in new_s.geometry.items():
+                        for name in new_s.graph.nodes_geometry:
+                            T, geom_name = new_s.graph.get(name)
+                            geom = new_s.geometry[geom_name]
+
                             if isinstance(v, Visual):
                                 apply_visual_color(geom, v, self._material_map)
                             tmp_scene.add_geometry(
                                 geometry=geom,
                                 geom_name=v.name,
                                 parent_node_name=link_name,
-                                transform=origin @ new_s.graph.get(name)[0],
+                                transform=origin @ T,
                             )
                     else:
-                        for name, geom in new_s.geometry.items():
+                        for name in new_s.graph.nodes_geometry:
+                            T, geom_name = new_s.graph.get(name)
+                            geom = new_s.geometry[geom_name]
+                            
                             if isinstance(v, Visual):
                                 apply_visual_color(geom, v, self._material_map)
                             s.add_geometry(
                                 geometry=geom,
                                 geom_name=v.name,
                                 parent_node_name=link_name,
-                                transform=origin @ new_s.graph.get(name)[0],
+                                transform=origin @ T,
                             )
 
         if force_single_geometry and len(tmp_scene.geometry) > 0:
@@ -1618,7 +1620,9 @@ class URDF:
         )
 
     def _parse_box(xml_element):
-        return Box(size=np.array(xml_element.attrib["size"].split(), dtype=np.float64))
+        # In case the element uses comma as a separator
+        size = xml_element.attrib["size"].replace(',', ' ').split()
+        return Box(size=np.array(size, dtype=np.float64))
 
     def _write_box(self, xml_parent, box):
         etree.SubElement(
@@ -1646,7 +1650,8 @@ class URDF:
 
     def _parse_scale(xml_element):
         if "scale" in xml_element.attrib:
-            s = xml_element.get("scale").split()
+            # In case the element uses comma as a separator
+            s = xml_element.get("scale").replace(',', ' ').split()
             if len(s) == 0:
                 return None
             elif len(s) == 1:
