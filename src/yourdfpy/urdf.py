@@ -14,6 +14,8 @@ from lxml import etree
 
 _logger = logging.getLogger(__name__)
 
+# threshold for comparison
+EQUALITY_TOLERANCE = 1e-8
 
 def _array_eq(arr1, arr2):
     if arr1 is None and arr2 is None:
@@ -22,9 +24,11 @@ def _array_eq(arr1, arr2):
         isinstance(arr1, np.ndarray)
         and isinstance(arr2, np.ndarray)
         and arr1.shape == arr2.shape
-        and (arr1 == arr2).all()
+        and np.allclose(arr1, arr2, atol=EQUALITY_TOLERANCE)
     )
 
+def _scalar_eq(scalar1, scalar2):
+    return np.isclose(scalar1, scalar2, atol=EQUALITY_TOLERANCE)
 
 @dataclass(eq=False)
 class TransmissionJoint:
@@ -59,7 +63,7 @@ class Actuator:
             return NotImplemented
         return (
             self.name == other.name
-            and self.mechanical_reduction == other.mechanical_reduction
+            and _scalar_eq(self.mechanical_reduction, other.mechanical_reduction)
             and all(
                 self_hi in other.hardware_interfaces
                 for self_hi in self.hardware_interfaces
@@ -150,7 +154,7 @@ class Mesh:
             return False
 
         if isinstance(self.scale, float) and isinstance(other.scale, float):
-            return self.scale == other.scale
+            return _scalar_eq(self.scale, other.scale)
 
         return _array_eq(self.scale, other.scale)
 
@@ -230,7 +234,7 @@ class Inertial:
             return NotImplemented
         return (
             _array_eq(self.origin, other.origin)
-            and self.mass == other.mass
+            and _scalar_eq(self.mass, other.mass)
             and _array_eq(self.inertia, other.inertia)
         )
 
