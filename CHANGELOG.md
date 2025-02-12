@@ -1,4 +1,10 @@
 # Changelog
+## Version 0.0.57
+- Add parameter EQUALITY_TOLERANCE for comparing different URDFs
+
+## Version 0.0.56
+- Replace travis by Github Actions
+
 ## Version 0.0.55
 - Add `pyglet<2` install dependency to `[full]` option (https://github.com/clemense/yourdfpy/issues/47)
 - Enable 3D scaling (https://github.com/clemense/yourdfpy/issues/48, https://github.com/clemense/yourdfpy/issues/41)
