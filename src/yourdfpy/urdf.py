@@ -1483,6 +1483,8 @@ class URDF:
         )
 
     def _write_mimic(self, xml_parent, mimic):
+        if mimic is None:
+            return
         etree.SubElement(
             xml_parent,
             "mimic",
@@ -2153,6 +2155,7 @@ class URDF:
         self._write_origin(xml_element, joint.origin)
         self._write_axis(xml_element, joint.axis)
         self._write_limit(xml_element, joint.limit)
+        self._write_mimic(xml_element, joint.mimic)
         self._write_dynamics(xml_element, joint.dynamics)
 
     @staticmethod
