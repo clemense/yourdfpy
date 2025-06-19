@@ -614,8 +614,8 @@ class URDF:
 
         Args:
             robot (Robot): The robot model. Defaults to None.
-            build_scene_graph (bool, optional): Wheter to build a scene graph to enable transformation queries and forward kinematics. Defaults to True.
-            build_collision_scene_graph (bool, optional): Wheter to build a scene graph for <collision> elements. Defaults to False.
+            build_scene_graph (bool, optional): Whether to build a scene graph to enable transformation queries and forward kinematics. Defaults to True.
+            build_collision_scene_graph (bool, optional): Whether to build a scene graph for <collision> elements. Defaults to False.
             load_meshes (bool, optional): Whether to load the meshes referenced in the <mesh> elements. Defaults to True.
             load_collision_meshes (bool, optional): Whether to load the collision meshes referenced in the <mesh> elements. Defaults to False.
             filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
