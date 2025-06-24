@@ -1,4 +1,7 @@
 # Changelog
+## Version 0.0.58
+- Fix typos
+
 ## Version 0.0.57
 - Add parameter EQUALITY_TOLERANCE for comparing different URDFs
 
