@@ -55,7 +55,7 @@ class TransmissionJoint:
 class Actuator:
     name: str
     mechanical_reduction: Optional[float] = None
-    # The follwing is only valid for ROS Indigo and prior versions
+    # The following is only valid for ROS Indigo and prior versions
     hardware_interfaces: List[str] = field(default_factory=list)
 
     def __eq__(self, other):
@@ -362,7 +362,7 @@ class URDFError(Exception):
 
 
 class URDFIncompleteError(URDFError):
-    """Raised when needed data for an object isn't there."""
+    """Raised when needed data for an object that isn't there."""
 
     pass
 
@@ -614,8 +614,8 @@ class URDF:
 
         Args:
             robot (Robot): The robot model. Defaults to None.
-            build_scene_graph (bool, optional): Wheter to build a scene graph to enable transformation queries and forward kinematics. Defaults to True.
-            build_collision_scene_graph (bool, optional): Wheter to build a scene graph for <collision> elements. Defaults to False.
+            build_scene_graph (bool, optional): Whether to build a scene graph to enable transformation queries and forward kinematics. Defaults to True.
+            build_collision_scene_graph (bool, optional): Whether to build a scene graph for <collision> elements. Defaults to False.
             load_meshes (bool, optional): Whether to load the meshes referenced in the <mesh> elements. Defaults to True.
             load_collision_meshes (bool, optional): Whether to load the collision meshes referenced in the <mesh> elements. Defaults to False.
             filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
@@ -672,7 +672,7 @@ class URDF:
 
     @property
     def collision_scene(self) -> trimesh.Scene:
-        """A scene object representing the <collision> elements of the URDF model
+        """A scene object representing the <collision> elements of the URDF model.
 
         Returns:
             trimesh.Scene: A trimesh scene object.
@@ -938,8 +938,8 @@ class URDF:
 
         Args:
             fname_or_file (str or file object): A filename or file object, file-like object, stream representing the URDF file.
-            **build_scene_graph (bool, optional): Wheter to build a scene graph to enable transformation queries and forward kinematics. Defaults to True.
-            **build_collision_scene_graph (bool, optional): Wheter to build a scene graph for <collision> elements. Defaults to False.
+            **build_scene_graph (bool, optional): Whether to build a scene graph to enable transformation queries and forward kinematics. Defaults to True.
+            **build_collision_scene_graph (bool, optional): Whether to build a scene graph for <collision> elements. Defaults to False.
             **load_meshes (bool, optional): Whether to load the meshes referenced in the <mesh> elements. Defaults to True.
             **load_collision_meshes (bool, optional): Whether to load the collision meshes referenced in the <mesh> elements. Defaults to False.
             **filename_handler ([type], optional): Any function f(in: str) -> str, that maps filenames in the URDF to actual resources. Can be used to customize treatment of `package://` directives or relative/absolute filenames. Defaults to None.
@@ -1029,7 +1029,7 @@ class URDF:
 
     def _determine_base_link(self):
         """Get the base link of the URDF tree by extracting all links without parents.
-        In case multiple links could be root chose the first.
+        In case multiple links could be root, choose the first.
 
         Returns:
             str: Name of the base link.
@@ -1350,7 +1350,7 @@ class URDF:
 
     def _successors(self, node):
         """
-        Get all nodes of the scene that succeeds a specified node.
+        Get all nodes of the scene that succeed a specified node.
 
         Parameters
         ------------
@@ -1389,7 +1389,7 @@ class URDF:
             **kwargs: Arguments delegated to URDF constructor of new URDF models.
 
         Returns:
-            list[(np.ndarray, yourdfpy.URDF)]: A list of tuples (np.ndarray, yourdfpy.URDF) whereas each homogeneous 4x4 matrix describes the root transformation of the respective URDF model w.r.t. the original URDF.
+            list[(np.ndarray, yourdfpy.URDF)]: A list of tuples (np.ndarray, yourdfpy.URDF) where each homogeneous 4x4 matrix describes the root transformation of the respective URDF model w.r.t. the original URDF.
         """
         root_urdf = URDF(
             robot=copy.deepcopy(self.robot), build_scene_graph=False, load_meshes=False
