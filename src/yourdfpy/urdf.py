@@ -1073,7 +1073,7 @@ class URDF:
             if joint.type == "prismatic":
                 matrix = origin @ tra.translation_matrix(q * joint.axis)
             else:
-                matrix = origin @ tra.rotation_matrix(float(q), joint.axis)
+                matrix = origin @ tra.rotation_matrix(float(q.item()), joint.axis)
         else:
             # this includes: floating, planar, fixed
             matrix = origin
@@ -1296,7 +1296,7 @@ class URDF:
                         for name in new_s.graph.nodes_geometry:
                             T, geom_name = new_s.graph.get(name)
                             geom = new_s.geometry[geom_name]
-                            
+
                             if isinstance(v, Visual):
                                 apply_visual_color(geom, v, self._material_map)
                             s.add_geometry(
