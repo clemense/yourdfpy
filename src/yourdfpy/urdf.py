@@ -1073,7 +1073,11 @@ class URDF:
             if joint.type == "prismatic":
                 matrix = origin @ tra.translation_matrix(q * joint.axis)
             else:
-                matrix = origin @ tra.rotation_matrix(float(q.item()), joint.axis)
+                if isinstance(q, float):
+                    matrix = origin @ tra.rotation_matrix(q, joint.axis)
+                else:
+                    matrix = origin @ tra.rotation_matrix(float(q.item()), joint.axis)
+                
         else:
             # this includes: floating, planar, fixed
             matrix = origin
