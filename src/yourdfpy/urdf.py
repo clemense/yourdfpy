@@ -4,7 +4,7 @@ import copy
 import logging
 import numpy as np
 from dataclasses import dataclass, field, is_dataclass
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from functools import partial
 
 import trimesh
@@ -318,6 +318,7 @@ class Robot:
     materials: List[Material] = field(default_factory=list)
     transmission: List[str] = field(default_factory=list)
     gazebo: List[str] = field(default_factory=list)
+    ros2_controls: List[Any] = field(default_factory=list)
 
     def __eq__(self, other):
         if not isinstance(other, Robot):
@@ -1487,6 +1488,8 @@ class URDF:
         )
 
     def _write_mimic(self, xml_parent, mimic):
+        if mimic is None:
+            return
         etree.SubElement(
             xml_parent,
             "mimic",
@@ -2157,7 +2160,16 @@ class URDF:
         self._write_origin(xml_element, joint.origin)
         self._write_axis(xml_element, joint.axis)
         self._write_limit(xml_element, joint.limit)
+        self._write_mimic(xml_element, joint.mimic)
         self._write_dynamics(xml_element, joint.dynamics)
+
+    def _parse_ros2_control(xml_element):
+        return xml_element
+
+    def _write_ros2_control(self, xml_parent, ros2_control):
+        if ros2_control is None:
+            return
+        xml_parent.append(ros2_control)
 
     @staticmethod
     def _parse_robot(xml_element):
@@ -2169,6 +2181,8 @@ class URDF:
             robot.joints.append(URDF._parse_joint(j))
         for m in xml_element.findall("material"):
             robot.materials.append(URDF._parse_material(m))
+        for c in xml_element.findall("ros2_control"):
+            robot.ros2_controls.append(URDF._parse_ros2_control(c))
         return robot
 
     def _validate_robot(self, robot):
@@ -2192,6 +2206,8 @@ class URDF:
             self._write_joint(xml_element, joint)
         for material in robot.materials:
             self._write_material(xml_element, material)
+        for ros2_control in robot.ros2_controls:
+            self._write_ros2_control(xml_element, ros2_control)
 
         return xml_element
 
