@@ -209,7 +209,7 @@ class Visual:
 
 @dataclass(eq=False)
 class Collision:
-    name: str
+    name: Optional[str] = None
     origin: Optional[np.ndarray] = None
     geometry: Geometry = None
 
@@ -1800,7 +1800,12 @@ class URDF:
             return
 
         # TODO: use texture filename handler
-        etree.SubElement(xml_parent, "texture", attrib={"filename": texture.filename})
+        attrib = {"filename": texture.filename} if texture.filename is not None else {}
+        etree.SubElement(
+            xml_parent,
+            "texture",
+            attrib=attrib,
+        )
 
     def _parse_material(xml_element):
         if xml_element is None:
