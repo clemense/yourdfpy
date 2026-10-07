@@ -785,7 +785,6 @@ class URDF:
             (n), float: Default configuration of URDF model.
         """
         config = []
-        config_names = []
         for j in self._actuated_joints:
             if j.type == "revolute" or j.type == "prismatic":
                 if j.limit is not None:
@@ -800,12 +799,6 @@ class URDF:
                 cfg = [0.0] * 2
 
             config.append(cfg)
-            config_names.append(j.name)
-
-        for i, j in enumerate(self.robot.joints):
-            if j.mimic is not None:
-                index = config_names.index(j.mimic.joint)
-                config[i][0] = config[index][0] * j.mimic.multiplier + j.mimic.offset
 
         if len(config) == 0:
             return np.array([], dtype=np.float64)
