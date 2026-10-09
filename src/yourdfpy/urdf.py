@@ -565,6 +565,11 @@ def filename_handler_meta(fname, filename_handlers):
     return fname
 
 
+def _filename_handler_keep_package_directory(fname, handler):
+    """Apply a filename handler without discarding the package directory."""
+    return handler(fname=filename_handler_ignore_directive(fname))
+
+
 def filename_handler_magic(fname, dir):
     """A magic filename handler.
 
@@ -575,14 +580,16 @@ def filename_handler_magic(fname, dir):
     Returns:
         str: The file name that exists or the input if nothing is found.
     """
-    return filename_handler_meta(
-        fname=fname,
-        filename_handlers=[
-            partial(filename_handler_relative, dir=dir),
-            filename_handler_ignore_directive,
+    filename_handlers = [
+        partial(filename_handler_relative, dir=dir),
+        filename_handler_ignore_directive,
+    ] + _create_filename_handlers_to_urdf_file_recursive(urdf_fname=dir)
+    if fname.startswith("package://"):
+        filename_handlers += [
+            partial(_filename_handler_keep_package_directory, handler=handler)
+            for handler in filename_handlers
         ]
-        + _create_filename_handlers_to_urdf_file_recursive(urdf_fname=dir),
-    )
+    return filename_handler_meta(fname=fname, filename_handlers=filename_handlers)
 
 
 def validation_handler_strict(errors):
