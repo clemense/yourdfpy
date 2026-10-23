@@ -6,6 +6,7 @@ import numpy as np
 from dataclasses import dataclass, field, is_dataclass
 from typing import Dict, List, Optional, Union
 from functools import partial
+from io import BytesIO
 
 import trimesh
 import trimesh.transformations as tra
@@ -991,6 +992,25 @@ class URDF:
         etree.cleanup_namespaces(xml_root)
 
         return URDF(robot=URDF._parse_robot(xml_element=xml_root), **kwargs)
+
+    @staticmethod
+    def load_from_string(urdf_string, **kwargs):
+        """Load a URDF description from XML text or bytes.
+
+        Args:
+            urdf_string (str or bytes): URDF XML. Text is encoded as UTF-8;
+                pass bytes to use another encoding declared in the XML.
+            **kwargs: Loading options accepted by :meth:`load`. Use
+                ``mesh_dir`` to resolve relative mesh filenames, since the
+                description has no filename from which to infer a directory.
+
+        Returns:
+            yourdfpy.URDF: URDF model.
+        """
+        if isinstance(urdf_string, str):
+            urdf_string = urdf_string.encode("utf-8")
+        with BytesIO(urdf_string) as stream:
+            return URDF.load(stream, **kwargs)
 
     def contains(self, key, value, element=None) -> bool:
         """Checks recursively whether the URDF tree contains the provided key-value pair.

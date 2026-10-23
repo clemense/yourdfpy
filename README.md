@@ -15,6 +15,24 @@ You can install yourdfpy directly from pip:
 pip install yourdfpy
 ```
 
+## Loading XML from a string
+
+For a robot description received from a ROS parameter or generated in memory,
+use `load_from_string` without creating a temporary URDF file:
+
+```python
+from yourdfpy import URDF
+
+model = URDF.load_from_string(
+    '<robot name="example"><link name="base"/></robot>',
+    load_meshes=False,
+)
+```
+
+The helper accepts XML text (encoded as UTF-8) or XML bytes, and the same loading
+options as `URDF.load`. Pass `mesh_dir` explicitly when the description refers
+to relative mesh filenames.
+
 ## Visualization
 
 Once installed, you can visualize a URDF model from the command line:
