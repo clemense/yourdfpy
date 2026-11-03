@@ -1,6 +1,7 @@
 import pytest
 import os
 import io
+import numpy as np
 
 from yourdfpy import urdf
 
@@ -21,6 +22,52 @@ def _create_robot():
 def test_robot():
     r = _create_robot()
     assert r.name == "test_robot"
+
+
+@pytest.mark.parametrize("joint_type", ["revolute", "continuous"])
+@pytest.mark.parametrize("container", ["list", "tuple", "dict"])
+@pytest.mark.parametrize("scalar_type", [int, float, np.int64, np.float32])
+@pytest.mark.parametrize("angle", [0, 1])
+def test_update_cfg_scalar_rotation(joint_type, container, scalar_type, angle):
+    robot_xml = f"""
+    <robot name="rotation_test">
+        <link name="base" />
+        <link name="tip" />
+        <joint name="joint" type="{joint_type}">
+            <parent link="base" />
+            <child link="tip" />
+            <origin xyz="1 2 3" />
+            <axis xyz="0 0 1" />
+            <limit lower="-2" upper="2" effort="1" velocity="1" />
+        </joint>
+    </robot>
+    """
+    model = urdf.URDF.load(
+        io.StringIO(robot_xml), load_meshes=False, build_collision_scene_graph=True
+    )
+    value = scalar_type(angle)
+    configuration = {"list": [value], "tuple": (value,), "dict": {"joint": value}}[
+        container
+    ]
+    # Exercise a real reset as well as a nonzero rotation.
+    model.update_cfg([0.5])
+    model.update_cfg(configuration)
+
+    expected = np.array(
+        [
+            [np.cos(angle), -np.sin(angle), 0, 1],
+            [np.sin(angle), np.cos(angle), 0, 2],
+            [0, 0, 1, 3],
+            [0, 0, 0, 1],
+        ]
+    )
+    np.testing.assert_allclose(model.cfg, [angle])
+    for collision_geometry in (False, True):
+        np.testing.assert_allclose(
+            model.get_transform("tip", collision_geometry=collision_geometry),
+            expected,
+            atol=1e-7,
+        )
 
 
 def test_validate():
