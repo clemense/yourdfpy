@@ -8,6 +8,11 @@ Yet anOther URDF parser for Python. Yup, it's another one. Deal with it.
 
 Yourdfpy is a simpler and easier-to-use library for loading, manipulating, validating, saving, and visualizing URDF files.
 
+URDF transmission metadata is available through `robot.robot.transmission` after
+loading a model. Transmission types, joint and actuator hardware interfaces, and
+optional mechanical reductions are preserved when writing the model back to XML.
+These are metadata; mechanical reductions do not alter forward kinematics.
+
 ## Installation
 
 You can install yourdfpy directly from pip:

@@ -28,6 +28,8 @@ def _array_eq(arr1, arr2):
     )
 
 def _scalar_eq(scalar1, scalar2):
+    if scalar1 is None or scalar2 is None:
+        return scalar1 is scalar2
     return np.isclose(scalar1, scalar2, atol=EQUALITY_TOLERANCE)
 
 @dataclass(eq=False)
@@ -316,7 +318,7 @@ class Robot:
     links: List[Link] = field(default_factory=list)
     joints: List[Joint] = field(default_factory=list)
     materials: List[Material] = field(default_factory=list)
-    transmission: List[str] = field(default_factory=list)
+    transmission: List[Transmission] = field(default_factory=list)
     gazebo: List[str] = field(default_factory=list)
 
     def __eq__(self, other):
@@ -1526,7 +1528,7 @@ class URDF:
 
         transmission_joint = TransmissionJoint(name=xml_element.get("name"))
 
-        for h in xml_element.findall("hardware_interface"):
+        for h in xml_element.findall("hardwareInterface"):
             transmission_joint.hardware_interfaces.append(h.text)
 
         return transmission_joint
@@ -1551,7 +1553,7 @@ class URDF:
             return None
 
         actuator = Actuator(name=xml_element.get("name"))
-        if xml_element.find("mechanicalReduction"):
+        if xml_element.find("mechanicalReduction") is not None:
             actuator.mechanical_reduction = float(
                 xml_element.find("mechanicalReduction").text
             )
@@ -1570,7 +1572,7 @@ class URDF:
             },
         )
         if actuator.mechanical_reduction is not None:
-            tmp = etree.SubElement("mechanicalReduction")
+            tmp = etree.SubElement(xml_element, "mechanicalReduction")
             tmp.text = str(actuator.mechanical_reduction)
 
         for h in actuator.hardware_interfaces:
@@ -1584,7 +1586,9 @@ class URDF:
         if xml_element is None:
             return None
 
-        transmission = Transmission(name=xml_element.get("name"))
+        transmission = Transmission(
+            name=xml_element.get("name"), type=xml_element.findtext("type")
+        )
 
         for j in xml_element.findall("joint"):
             transmission.joints.append(URDF._parse_transmission_joint(j))
@@ -1601,6 +1605,9 @@ class URDF:
                 "name": str(transmission.name),
             },
         )
+
+        if transmission.type is not None:
+            etree.SubElement(xml_element, "type").text = transmission.type
 
         for j in transmission.joints:
             self._write_transmission_joint(xml_element, j)
@@ -2174,6 +2181,8 @@ class URDF:
             robot.joints.append(URDF._parse_joint(j))
         for m in xml_element.findall("material"):
             robot.materials.append(URDF._parse_material(m))
+        for t in xml_element.findall("transmission"):
+            robot.transmission.append(URDF._parse_transmission(t))
         return robot
 
     def _validate_robot(self, robot):
@@ -2197,6 +2206,8 @@ class URDF:
             self._write_joint(xml_element, joint)
         for material in robot.materials:
             self._write_material(xml_element, material)
+        for transmission in robot.transmission:
+            self._write_transmission(xml_element, transmission)
 
         return xml_element
 
